@@ -36,9 +36,18 @@ impl Backoff {
         delay
     }
 
-    /// Call after a successful connection, so the next outage starts cheap.
+    /// Call after a connection stayed healthy, so the next outage starts cheap.
     pub fn reset(&mut self) {
         self.attempt = 0;
+    }
+
+    /// The base (first) delay. The supervisor uses it as the yardstick for
+    /// "did this session last long enough to count as healthy?" — a session
+    /// shorter than one base delay is a flap, not a recovery, and must not
+    /// reset the curve.
+    #[must_use]
+    pub fn base(&self) -> Duration {
+        self.base
     }
 
     /// Consecutive failures so far.

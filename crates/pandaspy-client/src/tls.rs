@@ -120,11 +120,20 @@ impl Transport for TlsTransport {
     }
 }
 
-/// Accepts any server certificate. **Reads identity; never establishes trust.**
+/// Accepts any server certificate *chain* — but still verifies the handshake
+/// signature.
 ///
-/// Trust is the pin check in [`TlsTransport::connect`], which runs before the
-/// access code is sent. This verifier must never be used by code that would
-/// transmit credentials without that subsequent pin check.
+/// Accepting the chain is legitimate for TOFU: a printer's leaf is self-signed,
+/// so there is nothing to validate it against. But the handshake signature is
+/// NOT skipped, and that distinction is load-bearing. Certificates are public —
+/// anything that can open port 8883 can read the printer's leaf — so a
+/// fingerprint pin only proves the *bytes* match; it does not prove the peer
+/// holds the matching private key. TLS's CertificateVerify signature is what
+/// proves possession. Skip it and an on-path attacker can replay the printer's
+/// public certificate (matching the pin), supply their own key share, and
+/// receive the access code without ever holding the printer's key. So we accept
+/// the chain and verify the signature: pin (right bytes) + signature (right
+/// key) together mean we are talking to the real printer.
 #[derive(Debug)]
 struct AcceptAnyServerCert {
     provider: Arc<CryptoProvider>,
@@ -139,25 +148,37 @@ impl ServerCertVerifier for AcceptAnyServerCert {
         _ocsp_response: &[u8],
         _now: UnixTime,
     ) -> Result<ServerCertVerified, rustls::Error> {
+        // Self-signed leaf: no chain to validate. Trust is the fingerprint pin
+        // in `connect`, gated by the signature checks below.
         Ok(ServerCertVerified::assertion())
     }
 
     fn verify_tls12_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
+        rustls::crypto::verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &self.provider.signature_verification_algorithms,
+        )
     }
 
     fn verify_tls13_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
+        rustls::crypto::verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &self.provider.signature_verification_algorithms,
+        )
     }
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
@@ -307,6 +328,18 @@ mod tests {
             other => panic!("expected CertificateChanged, got {other:?}"),
         }
     }
+
+    // On why there is no unit test here for "reject a forged handshake
+    // signature": the verifier now delegates to rustls's own audited
+    // `verify_tls12_signature` / `verify_tls13_signature`, and rustls
+    // deliberately makes the attack un-stageable from outside — a mismatched
+    // cert/key `ServerConfig` fails to build (`InconsistentKeys`), and
+    // `DigitallySignedStruct` has no public constructor to forge one. The
+    // positive test below is therefore load-bearing: with a stubbed verifier a
+    // valid handshake succeeds either way, but a *broken* real verifier would
+    // reject the legitimate server's signature and fail that test — so it
+    // proves the real path works. A genuine on-path MITM rejection belongs in a
+    // future integration test with a hand-rolled malicious TLS server.
 
     #[tokio::test]
     async fn an_unreachable_address_is_reported_as_unreachable() {

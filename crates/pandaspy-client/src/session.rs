@@ -209,7 +209,8 @@ pub enum TransportError {
 /// implementation ([`crate::tls::TlsTransport`]) does TCP + rustls + TOFU
 /// pinning; tests supply a fake that hands back an in-memory duplex.
 pub trait Transport: Send {
-    type Stream: AsyncRead + AsyncWrite + Unpin + Send;
+    // `'static` so the stream's read half can move into a spawned reader task.
+    type Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static;
 
     /// Connect once. Returns a ready stream or why it could not.
     fn connect(
@@ -241,7 +242,8 @@ async fn run_session<S>(
     shutdown: &mut tokio::sync::watch::Receiver<bool>,
 ) -> SessionOutcome
 where
-    S: AsyncRead + AsyncWrite + Unpin + Send,
+    // `'static` because the read half is moved into a spawned reader task.
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let mut stream = stream;
     let _ = events.send(SessionEvent::State(ConnectionState::Handshaking));
@@ -315,6 +317,59 @@ where
     }
 
     // ── The live loop ───────────────────────────────────────────────────
+    //
+    // Reads happen on a dedicated task, not inline in the `select!`. That is
+    // deliberate: `read_packet` is NOT cancel-safe — a report can span several
+    // TCP segments, and if a timer branch won the select while a read was
+    // parked mid-packet, the already-consumed header bytes would be dropped and
+    // the stream desynchronised. A channel `recv` IS cancel-safe, so the read
+    // lives in the task and the loop only ever cancels the safe branches.
+    let (read_half, mut write_half) = tokio::io::split(stream);
+    let (packets_tx, mut packets) = mpsc::channel::<Packet>(16);
+    let reader = tokio::spawn(async move {
+        let mut read_half = read_half;
+        // Stops on the first read error (EOF / malformed) or once the session
+        // drops the receiver; closing the channel is what signals "done".
+        while let Ok(packet) = mqtt::read_packet(&mut read_half).await {
+            if packets_tx.send(packet).await.is_err() {
+                break;
+            }
+        }
+    });
+
+    let outcome = live_loop(
+        &mut write_half,
+        &mut packets,
+        &report_topic,
+        &request_topic,
+        config,
+        &mut sequence,
+        events,
+        shutdown,
+    )
+    .await;
+
+    // The reader borrows the read half; abort it so the task does not linger
+    // parked on a socket the supervisor is about to reconnect.
+    reader.abort();
+    outcome
+}
+
+/// The select loop, split out so the reader task and its cleanup wrap it.
+#[allow(clippy::too_many_arguments)]
+async fn live_loop<W>(
+    write_half: &mut W,
+    packets: &mut mpsc::Receiver<Packet>,
+    report_topic: &str,
+    request_topic: &str,
+    config: &SessionConfig,
+    sequence: &mut u64,
+    events: &mpsc::UnboundedSender<SessionEvent>,
+    shutdown: &mut tokio::sync::watch::Receiver<bool>,
+) -> SessionOutcome
+where
+    W: AsyncWrite + Unpin,
+{
     let mut accumulator = StateAccumulator::new();
     let mut ping = tokio::time::interval(config.keep_alive / 2);
     ping.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -323,31 +378,43 @@ where
     refresh.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     refresh.reset();
 
-    let mut buffer_stream = stream;
+    // A dead-but-not-closed TCP connection (a printer yanked off Wi-Fi) never
+    // produces a read error, so without this the session would sit "Connected"
+    // forever. We ping every keep_alive/2 and the printer answers, so nothing —
+    // not even a PINGRESP — arriving within this window means the link is gone.
+    let dead_after = config.keep_alive * 2;
+    let mut deadline = Box::pin(tokio::time::sleep(dead_after));
+
     loop {
         tokio::select! {
             changed = shutdown.changed() => {
                 if changed.is_err() || *shutdown.borrow() {
-                    let _ = mqtt::write_packet(&mut buffer_stream, &Packet::Disconnect).await;
+                    let _ = mqtt::write_packet(write_half, &Packet::Disconnect).await;
                     return SessionOutcome::Shutdown;
                 }
             }
             _ = ping.tick() => {
-                if mqtt::write_packet(&mut buffer_stream, &Packet::PingReq).await.is_err() {
+                if mqtt::write_packet(write_half, &Packet::PingReq).await.is_err() {
                     return SessionOutcome::Ended(FailureReason::ConnectionClosed);
                 }
             }
             _ = refresh.tick() => {
-                if send_request(&mut buffer_stream, &request_topic, Request::Pushall, &mut sequence)
+                if send_request(write_half, request_topic, Request::Pushall, sequence)
                     .await
                     .is_err()
                 {
                     return SessionOutcome::Ended(FailureReason::ConnectionClosed);
                 }
             }
-            packet = mqtt::read_packet(&mut buffer_stream) => {
+            () = &mut deadline => {
+                // Nothing heard in `dead_after`, not even a ping reply.
+                return SessionOutcome::Ended(FailureReason::ConnectionClosed);
+            }
+            packet = packets.recv() => {
+                // Any traffic resets the liveness clock.
+                deadline = Box::pin(tokio::time::sleep(dead_after));
                 match packet {
-                    Ok(Packet::Publish(Publish { topic, payload })) if topic == report_topic => {
+                    Some(Packet::Publish(Publish { topic, payload })) if topic == report_topic => {
                         // A malformed payload is a firmware surprise, not a
                         // reason to drop the session — skip it and keep going.
                         if accumulator.apply_payload(&payload).unwrap_or(false)
@@ -356,12 +423,13 @@ where
                             let _ = events.send(SessionEvent::Report(Box::new(state)));
                         }
                     }
-                    // Anything else on the wire (PINGRESP, an off-topic
-                    // PUBLISH) is fine and ignored; the printer talks a lot.
-                    Ok(Packet::Disconnect) | Err(_) => {
+                    Some(Packet::Disconnect) | None => {
+                        // Disconnect from the printer, or the reader task ended
+                        // (EOF / malformed / dropped): the link is done.
                         return SessionOutcome::Ended(FailureReason::ConnectionClosed);
                     }
-                    Ok(_) => {}
+                    // PINGRESP, an off-topic PUBLISH: fine, ignored.
+                    Some(_) => {}
                 }
             }
         }
@@ -426,8 +494,13 @@ pub async fn supervise<T, J>(
 
         match transport.connect().await {
             Ok(stream) => {
-                backoff.reset();
-                match run_session(
+                // Time the session so we can tell a genuine recovery from a
+                // flap. Resetting backoff here (on a bare connect) would let a
+                // printer that accepts TLS then drops the MQTT session
+                // immediately be hammered at the base rate forever, because the
+                // exponential curve would zero out every cycle.
+                let started = tokio::time::Instant::now();
+                let outcome = run_session(
                     stream,
                     &endpoint,
                     &credentials,
@@ -435,8 +508,15 @@ pub async fn supervise<T, J>(
                     &events,
                     &mut shutdown,
                 )
-                .await
-                {
+                .await;
+
+                // Only a session that stayed up longer than one base delay
+                // counts as healthy enough to earn a fresh backoff curve.
+                if started.elapsed() >= backoff.base() {
+                    backoff.reset();
+                }
+
+                match outcome {
                     SessionOutcome::Shutdown => {
                         let _ = events.send(SessionEvent::State(ConnectionState::Disconnected));
                         break;

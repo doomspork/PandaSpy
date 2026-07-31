@@ -74,12 +74,27 @@ impl ConnectReturnCode {
 }
 
 /// A CONNECT, as PandaSpy sends it: clean session, username + password, no will.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `Debug` is hand-written so the `password` (the printer's access code) cannot
+/// reach a log or a crash report through a stray `{:?}` — the same discipline
+/// as [`crate::Credentials`].
+#[derive(Clone, PartialEq, Eq)]
 pub struct Connect {
     pub client_id: String,
     pub keep_alive_secs: u16,
     pub username: String,
     pub password: String,
+}
+
+impl std::fmt::Debug for Connect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Connect")
+            .field("client_id", &self.client_id)
+            .field("keep_alive_secs", &self.keep_alive_secs)
+            .field("username", &self.username)
+            .field("password", &"<redacted>")
+            .finish()
+    }
 }
 
 /// A CONNECT's flag byte for our fixed shape: clean session, username and
@@ -276,10 +291,22 @@ fn encode_remaining_length(mut len: usize, out: &mut Vec<u8>) {
 }
 
 /// A UTF-8 string with a 2-byte big-endian length prefix.
+///
+/// MQTT caps a string at 65535 bytes, and everything we encode (topics, the
+/// client id, `bblp`, the access code) is far shorter. A value over the cap
+/// would silently wrap the length prefix and corrupt the packet, so guard it:
+/// debug builds assert, release builds clamp the prefix to the truncation that
+/// at least keeps the framing self-consistent rather than emitting a length
+/// that disagrees with the bytes.
 fn encode_string(value: &str) -> Vec<u8> {
-    let mut out = Vec::with_capacity(value.len() + 2);
-    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
-    out.extend_from_slice(value.as_bytes());
+    debug_assert!(
+        value.len() <= u16::MAX as usize,
+        "MQTT string exceeds 65535 bytes"
+    );
+    let len = value.len().min(u16::MAX as usize);
+    let mut out = Vec::with_capacity(len + 2);
+    out.extend_from_slice(&(len as u16).to_be_bytes());
+    out.extend_from_slice(&value.as_bytes()[..len]);
     out
 }
 
@@ -505,6 +532,48 @@ mod tests {
         write_packet(&mut a, &sent).await.unwrap();
         let got = read_packet(&mut b).await.unwrap();
         assert_eq!(got, sent);
+    }
+
+    #[test]
+    fn malformed_bodies_error_rather_than_panic() {
+        // Each of these once risked a slice/index panic; they must be clean
+        // errors instead. A printer's firmware is undocumented and changes, so
+        // a surprise on the wire cannot be allowed to take the process down.
+        assert!(
+            Packet::decode(packet_type::CONNACK << 4, &[0x00]).is_err(),
+            "short CONNACK"
+        );
+        assert!(
+            Packet::decode(packet_type::SUBACK << 4, &[0x00]).is_err(),
+            "short SUBACK"
+        );
+        // PUBLISH whose 2-byte topic-length prefix claims more than is present.
+        assert!(
+            Packet::decode(packet_type::PUBLISH << 4, &[0x00, 0x05, b'a']).is_err(),
+            "truncated topic"
+        );
+        // A topic that is not valid UTF-8.
+        assert!(
+            Packet::decode(packet_type::PUBLISH << 4, &[0x00, 0x01, 0xff]).is_err(),
+            "non-UTF-8 topic"
+        );
+        // An unsupported packet type (e.g. PUBREL = 6).
+        assert!(Packet::decode(6 << 4, &[]).is_err(), "unsupported type");
+    }
+
+    #[test]
+    fn connect_debug_never_reveals_the_access_code() {
+        let rendered = format!(
+            "{:?}",
+            Packet::Connect(Connect {
+                client_id: "x".to_owned(),
+                keep_alive_secs: 30,
+                username: "bblp".to_owned(),
+                password: "12345678".to_owned(),
+            })
+        );
+        assert!(!rendered.contains("12345678"), "leaked: {rendered}");
+        assert!(rendered.contains("<redacted>"));
     }
 
     #[tokio::test]
