@@ -9,17 +9,34 @@ authors      = { workspace = true }
 publish      = false
 
 # ─── Dependency policy ───────────────────────────────────────────────────────
-# This crate performs real network I/O, but never directly: every socket sits
-# behind a trait so the discovery algorithm can be tested against canned
-# responses with no runtime, no network and no flakiness.
+# The discovery ALGORITHMS are written against traits (`SsdpSocket`,
+# `PortProbe`, `SsdpStack`, `InterfaceSource`) and are tested against scripted
+# fakes with a paused clock — no network, no flakiness. The `net` module holds
+# the one PORTABLE real implementation of those traits (tokio + socket2 +
+# rustls), written with cross-platform APIs only.
 #
-# `#[cfg(target_os)]` is NOT permitted here. Multicast quirks differ by
-# platform; that difference belongs in the transport implementation injected by
-# `src-tauri`, not in the algorithm. CI enforces this.
+# `#[cfg(target_os)]` is NOT permitted here, and neither are
+# `[target.'cfg(…)']` dependency tables. Platform differences live inside the
+# cross-platform crates we depend on, or — if something genuinely needs
+# per-OS tuning — in an implementation injected by `src-tauri`. CI enforces
+# this.
 
 [dependencies]
 pandaspy-proto = { workspace = true }
-thiserror   = { workspace = true }
+
+if-addrs     = { workspace = true }
+rustls       = { workspace = true }
+serde        = { workspace = true }
+socket2      = { workspace = true }
+tokio        = { workspace = true, features = ["net", "time", "rt", "sync", "macros"] }
+tokio-rustls = { workspace = true }
+x509-parser  = { workspace = true }
+
+[dev-dependencies]
+insta      = { workspace = true, features = ["glob"] }
+rcgen      = { workspace = true }
+serde_json = { workspace = true }
+tokio      = { workspace = true, features = ["macros", "test-util"] }
 
 [lints]
 workspace = true
