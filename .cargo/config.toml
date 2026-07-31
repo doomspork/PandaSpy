@@ -1,0 +1,4 @@
+[alias]
+# `cargo xtask <subcommand>` — repo automation that has to run identically on
+# macOS, Windows and Linux, so it is Rust rather than a shell script.
+xtask = "run --quiet --package xtask --"

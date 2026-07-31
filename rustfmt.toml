@@ -1,0 +1,4 @@
+# Deliberately close to stock rustfmt. Only stable options belong here —
+# nightly-only keys are silently ignored on the pinned stable toolchain, which
+# means local formatting would disagree with CI.
+edition = "2024"
