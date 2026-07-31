@@ -9,23 +9,43 @@ authors      = { workspace = true }
 publish      = false
 
 # ─── Dependency policy ───────────────────────────────────────────────────────
-# This is one of exactly TWO places in the repo where `#[cfg(target_os)]` is
-# allowed (the other is `src-tauri`). Secret storage is genuinely different per
-# OS — Keychain, Credential Manager, Secret Service — and pretending otherwise
-# would mean a lowest-common-denominator implementation on all three.
+# This is one of exactly TWO places in the repo where platform-conditional
+# dependencies are allowed (the other is `src-tauri`). Secret storage is
+# genuinely different per OS — Keychain, Credential Manager, Secret Service —
+# so the `keyring` backend is selected per target BELOW, in `[target.'cfg(…)']`
+# tables. That is the whole reason this crate is on the cfg-check allow-list.
 #
-# The allowance is narrow. It covers *which backend to use*, not *what a printer
-# is*. Anything you would be tempted to `cfg` beyond backend selection belongs
-# somewhere else.
-#
-# TODO(scaffold): the `keyring` crate is not a dependency yet. Add it in the
-# commit that first implements `SecretStore`.
+# The allowance is narrow: it covers which backend to use, not what a printer
+# is. Everything above the `SecretStore` trait stays platform-agnostic.
 
 [dependencies]
 pandaspy-proto = { workspace = true }
-serde       = { workspace = true }
-serde_json  = { workspace = true }
-thiserror   = { workspace = true }
+
+# Encrypted-file fallback for hosts with no OS keyring (headless Linux). The
+# key is derived (argon2) from machine key material injected by the caller, so
+# the crypto here stays pure and unit-testable; sourcing that material is
+# `src-tauri`'s job.
+argon2           = { workspace = true }
+chacha20poly1305 = { workspace = true }
+getrandom        = { workspace = true }
+keyring          = { workspace = true }
+serde            = { workspace = true }
+serde_json       = { workspace = true }
+thiserror        = { workspace = true }
+zeroize          = { workspace = true }
+
+# Per-OS keyring backend. Enabling `apple-native` on Linux (etc.) would fail to
+# compile, so each backend is gated to its target. `crypto-rust` makes the
+# Linux Secret Service client use RustCrypto instead of openssl — which
+# `deny.toml` bans outright.
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { workspace = true, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { workspace = true, features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { workspace = true, features = ["sync-secret-service", "crypto-rust"] }
 
 [lints]
 workspace = true

@@ -9,17 +9,27 @@ authors      = { workspace = true }
 publish      = false
 
 # ─── Dependency policy ───────────────────────────────────────────────────────
-# This crate will grow a TLS stack and an MQTT client. Both are cross-platform
-# by construction (rustls, not the system trust store) — that is the point.
-# `#[cfg(target_os)]` is NOT permitted here: if a platform needs different
-# behaviour, inject it, do not branch on it.
-#
-# TODO(scaffold): rumqttc/rustls/tokio are not dependencies yet. Add them in the
-# commit that first uses them so `cargo deny` reviews them in context.
+# TLS is rustls with the ring provider. The MQTT client is hand-rolled on
+# tokio-rustls rather than pulled from rumqttc: rumqttc drags in aws-lc-rs (its
+# default provider), `rustls-native-certs` (the system trust store this project
+# deliberately refuses), and — pinned at ^0.102 — a `rustls-webpki` carrying
+# RUSTSEC-2026-0104. A read-only monitor needs only a small MQTT subset, and a
+# pure codec fits this repo's tested-everywhere design. Trust is TOFU pinning
+# (`pinning.rs`), never the system trust store. `#[cfg(target_os)]` is NOT
+# permitted here; inject platform behaviour through a trait instead.
 
 [dependencies]
 pandaspy-proto = { workspace = true }
-thiserror   = { workspace = true }
+
+rustls       = { workspace = true }
+sha2         = { workspace = true }
+thiserror    = { workspace = true }
+tokio        = { workspace = true, features = ["net", "time", "rt", "sync", "macros", "io-util"] }
+tokio-rustls = { workspace = true }
+
+[dev-dependencies]
+rcgen = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
 
 [lints]
 workspace = true
