@@ -1,0 +1,46 @@
+[package]
+name         = "spool"
+version      = "0.1.0"
+description  = "Monitor Bambu Lab 3D printers from the menu bar."
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+publish      = false
+
+# ─── This crate is the platform layer, and stays THIN ────────────────────────
+#
+# What belongs here: Tauri commands, the tray, the window, the event bridge
+# between Rust and the frontend, and the concrete implementations of the traits
+# the domain crates define (real sockets, real keychains).
+#
+# What does not: anything a test would want to run without a GUI. If you are
+# writing protocol logic, discovery logic or a state machine in here, it is in
+# the wrong crate.
+#
+# This is one of exactly TWO places `#[cfg(target_os)]` is permitted; the other
+# is `crates/bambu-store`. See CLAUDE.md § The one architectural rule.
+#
+# NOTE: the app version lives HERE and only here. `tauri.conf.json` has no
+# `version` key and inherits this one; the root `package.json` has none either.
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+bambu-store = { workspace = true }
+
+# TODO(scaffold): bambu-proto, bambu-discovery and bambu-client get added in the
+# commits that first wire them in, so `cargo deny` reviews their dependency
+# trees in the context of the change that needs them.
+
+fluent-bundle = { workspace = true }
+include_dir   = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+sys-locale    = "0.3.2"
+tauri         = { version = "2.11.5", features = ["tray-icon"] }
+unic-langid   = { workspace = true }
+
+[lints]
+workspace = true

@@ -55,6 +55,7 @@ members = [
   "crates/bambu-discovery",
   "crates/bambu-client",
   "crates/bambu-store",
+  "src-tauri",
 ]
 
 # The root package (`xtask`) is a member implicitly. Without `default-members`,
@@ -66,6 +67,7 @@ default-members = [
   "crates/bambu-discovery",
   "crates/bambu-client",
   "crates/bambu-store",
+  "src-tauri",
 ]
 
 [workspace.package]
@@ -116,5 +118,7 @@ all = { level = "warn", priority = -1 }
 codegen-units = 1
 lto           = true
 opt-level     = "s"
-panic         = "abort"
 strip         = true
+# NB: no `panic = "abort"`. It would shave a little size, but Spool runs
+# unattended for days; a panic in one printer's session task must not take the
+# whole tray down with it.
