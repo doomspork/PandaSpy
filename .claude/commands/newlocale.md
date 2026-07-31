@@ -1,6 +1,6 @@
 ---
 description: Add a new language to Spool
-argument-hint: "<BCP-47 tag, e.g. de-DE>"
+argument-hint: '<BCP-47 tag, e.g. de-DE>'
 allowed-tools: Bash(cargo:*), Bash(mkdir:*), Bash(cp:*), Read, Write, Edit
 ---
 
