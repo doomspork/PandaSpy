@@ -6,13 +6,14 @@ PandaSpy is a cross-platform desktop tray application that monitors Bambu Lab 3D
 printers over the local network. Rust + Tauri v2, targeting macOS (aarch64 and
 x86-64), Windows (x86-64) and Linux (x86-64).
 
-**Current state: M1 (protocol core) complete.** `pandaspy-proto` implements
-the wire contract, the state merge, the AMS model and HMS resolution, tested
-against a synthetic fixture corpus (real captures pending — see
-`fixtures/README.md`). Discovery, the client, persistence and the real UI are
-not implemented; those placeholders are marked `TODO(scaffold)`. Protocol
-facts asserted from community documentation rather than a capture are marked
-`TODO(fixture)`.
+**Current state: M2 (discovery) complete.** `pandaspy-proto` implements the
+wire contract, the state merge, the AMS model and HMS resolution;
+`pandaspy-discovery` implements multi-interface SSDP, the subnet-probe
+fallback and structured zero-result diagnostics. Both are tested against a
+synthetic fixture corpus (real captures pending — see `fixtures/README.md`).
+The client, persistence and the real UI are not implemented; those
+placeholders are marked `TODO(scaffold)`. Protocol facts asserted from
+community documentation rather than a capture are marked `TODO(fixture)`.
 
 ---
 
@@ -55,10 +56,19 @@ reasonable at the time.
 Inject it, do not branch on it.
 
 `pandaspy-discovery` and `pandaspy-client` are already shaped for this: sockets sit
-behind `SsdpSocket` and `PortProbe`, and pins behind `PinStore`. `src-tauri`
-supplies the real implementations; tests supply fakes. If multicast needs
-different setup on Windows, that belongs in the Windows socket implementation
-in `src-tauri`, not in the discovery algorithm.
+behind `SsdpSocket`/`SsdpStack`/`PortProbe`, and pins behind `PinStore`. Tests
+supply fakes. The _real_ implementations come in two flavours, and the
+distinction matters:
+
+- **Portable I/O lives with its algorithm crate** (`pandaspy-discovery::net` is
+  tokio + socket2 + rustls using cross-platform APIs only). One socket
+  implementation, compiled identically for all three platforms, is the
+  single-codebase argument applied to I/O.
+- **Platform-tuned I/O, if a platform ever genuinely needs it, is injected by
+  `src-tauri`** through the same traits. If multicast needs different setup on
+  Windows, that belongs in a Windows implementation supplied by `src-tauri`,
+  not in a `cfg` inside the discovery crate. (So far, none has been needed —
+  even SO_REUSEPORT was avoided rather than platform-gated.)
 
 Where the difference is genuinely runtime rather than compile-time, probe at
 runtime. `xtask/src/main.rs` does exactly this to find pnpm, which is
@@ -117,15 +127,38 @@ decision, not a refactor.
 
 ### `pandaspy-discovery` — finding printers
 
-SSDP first, subnet probe as the fallback. Neither owns a socket; both are
-written against `SsdpSocket` and `PortProbe` so the algorithms can be tested
-against canned responses with no network and no runtime in the test binary.
+SSDP first, subnet probe as the fallback. Bambu printers announce on
+`239.255.255.250:2021` (their port, not the standard 1900) and answer
+M-SEARCH; the engine runs a passive listener and per-interface active
+searches simultaneously, then falls back to knocking on TCP 8883 across the
+local subnet and reading the TLS certificate — its CN is the device serial.
+
+Three design decisions to know before touching it:
+
+- **Every usable interface, always.** The passive listener joins the
+  multicast group on each one; each gets its own search socket. Multi-homed
+  machines (VPN, Docker bridge, two NICs) are where "use the default
+  interface" silently finds nothing — the failure mode this crate exists to
+  prevent. Partial failure is tolerated and recorded per interface.
+- **Diagnostics are a product feature, not logging.** Every run returns
+  `DiscoveryDiagnostics`; `verdict()` collapses it to found / no-usable-
+  interface / permission-denied / no-response for the troubleshooting UI.
+  Only sends, receipts and failures count as evidence — a socket that merely
+  _opened_ proves nothing, which is exactly how macOS Local Network denial
+  hides (sockets open, joins succeed, sends die with "no route to host").
+- **The engine is generic over `SsdpStack` + `SsdpSocket` + `PortProbe` +
+  `InterfaceSource`** and is tested end to end against scripted fakes under
+  a paused tokio clock (`tests/engine.rs`) — deterministic and instant. The
+  real transports live in `net.rs`, portable APIs only. The subnet walk
+  clamps anything wider than /24 to our own /24 and caps total targets: a
+  fallback, not a port scanner.
 
 The transport traits return `impl Future<Output = …> + Send` rather than using
 `async fn`. That is deliberate: `async fn` in a public trait leaves the future's
-auto-traits unspecified, so callers cannot spawn the result on a multi-threaded
-runtime. The cost is that the traits are not `dyn`-safe, which is fine — there
-is one real implementation and one test double.
+auto-traits unspecified, so callers could not spawn the result on a
+multi-threaded runtime. The cost is that the traits are not `dyn`-safe, which
+is fine — the engine is generic, and there is one real implementation plus
+scripted fakes.
 
 ### `pandaspy-client` — talking to a printer
 
@@ -320,7 +353,7 @@ cargo test --workspace
 cargo xtask locale-check
 cargo xtask cfg-check
 cargo check -p pandaspy-proto --target wasm32-unknown-unknown
-cargo deny check                 # needs `cargo install cargo-deny --locked`
+cargo deny --workspace check     # needs `cargo install cargo-deny --locked`
 pnpm run check                   # prettier + eslint + svelte-check
 ```
 
@@ -557,8 +590,30 @@ Everything below is deliberate scaffolding debt, not oversight.
 - **`pandaspy-proto`, `pandaspy-discovery` and `pandaspy-client` are not yet
   dependencies of `src-tauri`.** Add each in the commit that first wires it in,
   so `cargo deny` reviews its dependency tree in context.
-- **No TLS or MQTT dependency yet.** When adding one it must be `rustls`;
-  `deny.toml` denies `openssl-sys` and `native-tls` outright, because a system
-  trust store means three different certificate behaviours on three platforms.
-  Note that `ring` will need a `[[licenses.clarify]]` entry — take the hash from
-  cargo-deny's error message rather than guessing one.
+- **`cargo deny` MUST be run with `--workspace`.** The repo root is a real
+  package (`xtask`), not a virtual manifest, so a bare `cargo deny check`
+  takes `xtask` as the sole graph root and silently audits ~26 crates —
+  none of rustls, ring, tokio or the Tauri tree. `ci.yml` passes
+  `--workspace`; the local command in this file does too. A green audit that
+  looked at 4% of the tree is the failure mode to fear here.
+- **16 `unmaintained` advisories are ignored in `deny.toml`, all via Tauri**
+  (the GTK3 binding family + `proc-macro-error` on Linux, and the retired
+  `rust-unic` crates via `tauri-utils`→`urlpattern`). Every one is a
+  no-fix-available notice, not a vulnerability. Re-audit the whole `ignore`
+  list on any Tauri version bump — an ignore that outlives its cause is a
+  silenced alarm, and cargo-deny flags a stale entry as
+  `advisory-not-detected` (a warning, so read the warnings after a bump).
+- **No MQTT dependency yet.** TLS arrived with M2 and it is `rustls` with the
+  **ring** provider on purpose — one crypto stack, no cmake/nasm build
+  dependency, and `deny.toml` denies `openssl-sys` and `native-tls` outright,
+  because a system trust store means three different certificate behaviours
+  on three platforms. When M3 adds an MQTT client it must sit on the same
+  rustls configuration. The certificate-verification-disabling verifier in
+  `pandaspy-discovery::net` is for _reading_ a printer's identity during
+  discovery only; the MQTT path gets TOFU pinning, never that verifier.
+- **The macOS Local Network permission symptom is a heuristic.**
+  `DiscoveryVerdict::PermissionDenied` treats all-sends-failing with
+  `HostUnreachable` as denial (plus real `PermissionDenied` kinds). Verify
+  the exact symptom from a bundled build in M5, when
+  `NSLocalNetworkUsageDescription` is wired into Info.plist — it is marked
+  `TODO(fixture)` in `diag.rs`.

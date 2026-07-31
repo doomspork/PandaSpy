@@ -21,7 +21,12 @@ code running against the same bytes in the same test.
 fixtures/
   reports/     single MQTT report messages    -> crates/pandaspy-proto/tests/golden.rs
   sequences/   pushall + deltas, in order     -> crates/pandaspy-proto/tests/sequence.rs
+  ssdp/        raw SSDP datagrams             -> crates/pandaspy-discovery/tests/ssdp_golden.rs
 ```
+
+SSDP fixtures are byte-exact datagrams — CRLF line endings included, which is
+why `.gitattributes` marks `fixtures/**` as `-text`. Capture one with
+`nc -ul 2021 > capture.txt` (or the /fixture command) while a printer is on.
 
 Files are complete wire payloads — the full `{"print": {...}}` /
 `{"info": {...}}` envelope exactly as it left the printer, not excerpts.
