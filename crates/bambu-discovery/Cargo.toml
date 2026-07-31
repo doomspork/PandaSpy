@@ -1,0 +1,25 @@
+[package]
+name         = "bambu-discovery"
+version      = "0.1.0"
+description  = "Finding Bambu Lab printers on the local network (SSDP and subnet probe)."
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+publish      = false
+
+# ─── Dependency policy ───────────────────────────────────────────────────────
+# This crate performs real network I/O, but never directly: every socket sits
+# behind a trait so the discovery algorithm can be tested against canned
+# responses with no runtime, no network and no flakiness.
+#
+# `#[cfg(target_os)]` is NOT permitted here. Multicast quirks differ by
+# platform; that difference belongs in the transport implementation injected by
+# `src-tauri`, not in the algorithm. CI enforces this.
+
+[dependencies]
+bambu-proto = { workspace = true }
+thiserror   = { workspace = true }
+
+[lints]
+workspace = true

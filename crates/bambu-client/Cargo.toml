@@ -1,0 +1,25 @@
+[package]
+name         = "bambu-client"
+version      = "0.1.0"
+description  = "TLS + MQTT session with a Bambu Lab printer: TOFU pinning, reconnect, backoff."
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+publish      = false
+
+# ─── Dependency policy ───────────────────────────────────────────────────────
+# This crate will grow a TLS stack and an MQTT client. Both are cross-platform
+# by construction (rustls, not the system trust store) — that is the point.
+# `#[cfg(target_os)]` is NOT permitted here: if a platform needs different
+# behaviour, inject it, do not branch on it.
+#
+# TODO(scaffold): rumqttc/rustls/tokio are not dependencies yet. Add them in the
+# commit that first uses them so `cargo deny` reviews them in context.
+
+[dependencies]
+bambu-proto = { workspace = true }
+thiserror   = { workspace = true }
+
+[lints]
+workspace = true

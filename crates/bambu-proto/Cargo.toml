@@ -1,0 +1,28 @@
+[package]
+name         = "bambu-proto"
+version      = "0.1.0"
+description  = "Pure Bambu Lab protocol types, payload codec, state merge and HMS table."
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+publish      = false
+
+# ─── Dependency policy ───────────────────────────────────────────────────────
+# This crate is PURE. No I/O, no async runtime, no platform APIs, no clock, no
+# randomness. Everything here is a function of its inputs.
+#
+# CI proves it by building for `wasm32-unknown-unknown`, a target where sockets
+# and files simply do not exist. If you find yourself wanting `tokio`, `std::fs`
+# or `#[cfg(target_os)]` here, the logic belongs in another crate.
+
+[dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
+thiserror  = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true, features = ["glob"] }
+
+[lints]
+workspace = true

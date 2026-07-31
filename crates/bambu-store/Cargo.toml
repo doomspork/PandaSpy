@@ -1,0 +1,31 @@
+[package]
+name         = "bambu-store"
+version      = "0.1.0"
+description  = "Configuration and secret storage for Spool, behind swappable backends."
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+authors      = { workspace = true }
+publish      = false
+
+# ─── Dependency policy ───────────────────────────────────────────────────────
+# This is one of exactly TWO places in the repo where `#[cfg(target_os)]` is
+# allowed (the other is `src-tauri`). Secret storage is genuinely different per
+# OS — Keychain, Credential Manager, Secret Service — and pretending otherwise
+# would mean a lowest-common-denominator implementation on all three.
+#
+# The allowance is narrow. It covers *which backend to use*, not *what a printer
+# is*. Anything you would be tempted to `cfg` beyond backend selection belongs
+# somewhere else.
+#
+# TODO(scaffold): the `keyring` crate is not a dependency yet. Add it in the
+# commit that first implements `SecretStore`.
+
+[dependencies]
+bambu-proto = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+thiserror   = { workspace = true }
+
+[lints]
+workspace = true

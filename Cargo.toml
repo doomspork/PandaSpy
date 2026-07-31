@@ -50,12 +50,23 @@ resolver = "3"
 # verbatim and cannot expand a `crates/*` glob — a globbed member is silently
 # skipped and its version drifts out of lockstep. Adding a crate means adding a
 # line here.
-members = []
+members = [
+  "crates/bambu-proto",
+  "crates/bambu-discovery",
+  "crates/bambu-client",
+  "crates/bambu-store",
+]
 
 # The root package (`xtask`) is a member implicitly. Without `default-members`,
 # a bare `cargo test` at a root-that-is-also-a-package would test ONLY the root
 # package and silently skip every crate.
-default-members = ["."]
+default-members = [
+  ".",
+  "crates/bambu-proto",
+  "crates/bambu-discovery",
+  "crates/bambu-client",
+  "crates/bambu-store",
+]
 
 [workspace.package]
 edition      = "2024"
