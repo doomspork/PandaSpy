@@ -82,7 +82,13 @@ runs:
           libssl-dev \
           libwebkit2gtk-4.1-dev \
           libxdo-dev \
-          patchelf
+          patchelf \
+          libdbus-1-dev
+        # libdbus-1-dev: pandaspy-store's Linux keyring backend
+        # (keyring `sync-secret-service` → dbus-secret-service → libdbus-sys)
+        # links the system libdbus at build time. See CLAUDE.md — this is the
+        # one C build-dependency in the tree, and swapping to keyring's
+        # pure-Rust zbus backend is a documented maintainer decision.
 
     - name: Install pnpm
       if: inputs.node == 'true'

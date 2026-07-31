@@ -55,8 +55,13 @@ impl CertPinStore {
     }
 
     /// Record (or replace) the fingerprint for `serial`.
+    ///
+    /// This rewrites the whole file, so a previously *corrupt* pin store heals
+    /// here — exactly as [`pinned`](Self::pinned) promises. An unparseable
+    /// existing file is treated as empty for the write; only a real I/O error
+    /// stops us.
     pub fn pin(&self, serial: &str, fingerprint: [u8; 32]) -> Result<(), StoreError> {
-        let mut pins = self.load()?;
+        let mut pins = self.load_for_write()?;
         pins.insert(serial.to_owned(), fingerprint);
         self.save(&pins)
     }
@@ -64,7 +69,7 @@ impl CertPinStore {
     /// Forget a printer's pin. Idempotent: forgetting an unknown serial is
     /// success and does not rewrite the file.
     pub fn forget(&self, serial: &str) -> Result<(), StoreError> {
-        let mut pins = self.load()?;
+        let mut pins = self.load_for_write()?;
         if pins.remove(serial).is_some() {
             self.save(&pins)?;
         }
@@ -83,6 +88,19 @@ impl CertPinStore {
             path: self.path.display().to_string(),
             reason: e.to_string(),
         })
+    }
+
+    /// Like [`load`](Self::load), but for the write paths: an unparseable file
+    /// is recovered to an empty map so that pinning a freshly re-verified
+    /// certificate rewrites (and thereby heals) the store rather than failing
+    /// forever. A genuine I/O error still propagates — that is not something a
+    /// rewrite can fix.
+    fn load_for_write(&self) -> Result<Pins, StoreError> {
+        match self.load() {
+            Ok(pins) => Ok(pins),
+            Err(StoreError::Corrupt { .. }) => Ok(Pins::new()),
+            Err(other) => Err(other),
+        }
     }
 
     fn save(&self, pins: &Pins) -> Result<(), StoreError> {
@@ -148,5 +166,25 @@ mod tests {
         store.pin("serial", fingerprint(2)).unwrap();
 
         assert_eq!(store.pinned("serial"), Some(fingerprint(2)));
+    }
+
+    #[test]
+    fn a_corrupt_pin_file_reads_as_unpinned_and_heals_on_the_next_pin() {
+        // A downgrade or a partial write leaves pins.json unparseable. Under
+        // TOFU that must read as "nothing pinned" (re-verify), and — the part
+        // the docs promise — recording the re-verified fingerprint must rewrite
+        // and heal the file rather than fail forever in a re-prompt loop.
+        let dir = TempDir::new();
+        let path = dir.join("pins.json");
+        std::fs::write(&path, b"{ this is not valid json").unwrap();
+        let store = CertPinStore::new(&path);
+
+        assert_eq!(store.pinned("serial"), None, "corrupt reads as unpinned");
+
+        let fp = fingerprint(0x7e);
+        store
+            .pin("serial", fp)
+            .expect("pin must heal a corrupt file");
+        assert_eq!(store.pinned("serial"), Some(fp), "the store is healed");
     }
 }

@@ -665,6 +665,16 @@ Everything below is deliberate scaffolding debt, not oversight.
   locally. The CI matrix compiles the others — treat a first Windows/Linux
   build as unverified until it goes green, and the Windows popover anchor as
   needing tuning on real hardware (marked `TODO(scaffold)`).
+- **The Linux keyring pulls one C build-dependency — reconsider it.**
+  `pandaspy-store`'s `keyring` `sync-secret-service` feature resolves to
+  `dbus-secret-service` → `libdbus-sys`, which links the system libdbus and
+  needs `libdbus-1-dev` at build time (now installed by the CI setup action).
+  That C dependency sits awkwardly against the ring-not-aws-lc / rustls-not-
+  openssl ethos this project otherwise holds. keyring offers a pure-Rust path
+  (`async-secret-service` + `async-io`, over zbus) that removes libdbus
+  entirely; it was not adopted now because it cannot be compile-verified from
+  the macOS dev host and a blind backend swap risked a Linux CI break. Make
+  the call with a real Linux build in hand.
 - **The encrypted-file secret fallback needs `src-tauri` to do two things.**
   Create the config directory `0600` (the "other local users" guarantee is
   conditional on it — `pandaspy-store` cannot `chmod` portably without a
