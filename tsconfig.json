@@ -1,0 +1,17 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"moduleResolution": "bundler"
+	}
+	// The generated `.svelte-kit/tsconfig.json` owns `include`/`exclude`, `paths`
+	// and the module/target settings. Run `pnpm svelte-kit sync` if this file
+	// fails to resolve — the generated half is not committed.
+}

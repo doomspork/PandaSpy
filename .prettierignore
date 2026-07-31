@@ -1,0 +1,22 @@
+# Generated
+.svelte-kit/
+build/
+target/
+node_modules/
+pnpm-lock.yaml
+
+# Owned by rustfmt, not prettier.
+src-tauri/
+crates/
+xtask/
+
+# Owned by Release Please. Reformatting it produces noise in every release PR.
+CHANGELOG.md
+
+# Fluent is not a format prettier understands; reflowing it would corrupt
+# multiline patterns.
+locales/
+
+# Recordings. A fixture is a byte-for-byte capture; reformatting one changes
+# what it is testing.
+fixtures/
