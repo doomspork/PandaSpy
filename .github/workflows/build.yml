@@ -1,0 +1,118 @@
+name: Build
+
+# Reusable. Two callers:
+#   ci.yml       on pushes to main, to prove the app still packages everywhere
+#   release.yml  to ATTACH artifacts to a release that already exists
+#
+# Note the deliberate absence of a `permissions:` block. A reusable workflow
+# that declares permissions cannot be called by a workflow with fewer, so
+# leaving it off lets ci.yml call this with `contents: read` and release.yml
+# call it with `contents: write`.
+
+on:
+  workflow_call:
+    inputs:
+      release-id:
+        description: >
+          Numeric id of an EXISTING GitHub release to attach bundles to. Leave
+          empty to upload them as workflow artifacts instead. This workflow
+          never creates a release — Release Please owns that.
+        type: string
+        default: ''
+      ref:
+        description: Git ref to build. Empty means the caller's ref.
+        type: string
+        default: ''
+      updater-json:
+        description: >
+          Generate and upload latest.json for the auto-updater. Requires
+          TAURI_SIGNING_PRIVATE_KEY, so it stays off until signing is
+          provisioned.
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build (blank = default branch)
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  bundle:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # One platform failing must not hide whether the others work.
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS (Apple silicon)
+            runner: macos-14
+            target: aarch64-apple-darwin
+          - label: macOS (Intel)
+            runner: macos-13
+            target: x86_64-apple-darwin
+          - label: Windows (x86-64)
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          # ubuntu-22.04 deliberately, NOT ubuntu-latest. The glibc a binary is
+          # linked against becomes the minimum glibc its users need; building on
+          # a newer Ubuntu would silently drop everyone on a stable distro.
+          - label: Linux (x86-64)
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: ./.github/actions/setup
+        with:
+          targets: ${{ matrix.target }}
+          cache-key: bundle-${{ matrix.target }}
+
+      - name: Build and bundle
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # ─── TODO(signing): provision these, then uncomment ───────────────
+          # Until then: macOS bundles are unsigned and unnotarised (Gatekeeper
+          # will refuse them without a right-click → Open), Windows bundles are
+          # unsigned (SmartScreen will warn), and the updater cannot sign, so
+          # `updater-json` must stay false.
+          #
+          # macOS code signing and notarisation:
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          #
+          # Tauri updater signing (also flip `updater-json` to true, and add the
+          # public key under `plugins.updater` in tauri.conf.json):
+          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          #
+          # Windows code signing:
+          # WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          # WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          # ──────────────────────────────────────────────────────────────────
+        with:
+          tauriScript: pnpm tauri
+          args: --target ${{ matrix.target }}
+          # Attach to the release Release Please already made. Empty means
+          # "no release involved" and the bundles become workflow artifacts.
+          releaseId: ${{ inputs.release-id }}
+          uploadWorkflowArtifacts: ${{ inputs.release-id == '' }}
+          workflowArtifactNamePattern: spool-${{ matrix.target }}
+          # Compared against `true` rather than passed through: tauri-action
+          # reads this with `getBooleanInput`, which throws on an empty string —
+          # and it *is* empty when this workflow is run via workflow_dispatch.
+          uploadUpdaterJson: ${{ inputs.updater-json == true }}
+          # Runners drop network connections often enough that a single
+          # transient failure should not cost a whole release build.
+          retryAttempts: 2

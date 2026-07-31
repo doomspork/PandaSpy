@@ -1,0 +1,36 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # Release Please creates a DRAFT release (see `"draft": true` in the
+      # config). Nothing is built yet at this point, and that is intentional:
+      #
+      #   1. this workflow opens a release PR; you merge it
+      #   2. it then tags and creates the draft release
+      #   3. you review the draft and press Publish
+      #   4. the `release: published` event runs release.yml, which builds and
+      #      attaches the bundles
+      #
+      # Step 3 is a human on purpose. A release created by GITHUB_TOKEN does
+      # not trigger other workflows — that is a GitHub rule, not an oversight —
+      # so something has to break the chain. Making it a person also means the
+      # draft gets read before it goes out.

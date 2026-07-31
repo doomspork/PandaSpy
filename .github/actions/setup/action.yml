@@ -1,0 +1,102 @@
+name: Set up the Spool toolchain
+description: >
+  Rust (from rust-toolchain.toml) with cache, Node + pnpm with cache, and the
+  Linux system libraries Tauri needs. Every job that touches code uses this, so
+  there is one place to fix when a dependency changes.
+
+inputs:
+  targets:
+    description: >
+      Extra Rust targets to install, comma-separated. The toolchain file lists
+      wasm32 for the purity check, but rustup only honours that list when it
+      installs the toolchain itself — so jobs that need a target must ask.
+    required: false
+    default: ''
+  cache-key:
+    description: Extra cache-key fragment, so jobs with different profiles do not share a cache.
+    required: false
+    default: ''
+  rust:
+    description: Set to 'false' for frontend-only jobs, to skip the Rust toolchain.
+    required: false
+    default: 'true'
+  node:
+    description: Set to 'false' for Rust-only jobs, to skip Node entirely.
+    required: false
+    default: 'true'
+  linux-deps:
+    description: Set to 'false' to skip the Tauri system libraries on Linux.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    # rust-toolchain.toml is the single source of truth for the Rust version.
+    # Reading it here rather than hard-coding a version in each workflow means a
+    # toolchain bump is a one-line change in one file.
+    - name: Read the pinned toolchain
+      id: toolchain
+      if: inputs.rust == 'true'
+      shell: bash
+      run: |
+        channel=$(grep -m1 '^channel' rust-toolchain.toml | cut -d'"' -f2)
+        if [ -z "$channel" ]; then
+          echo "::error::could not read channel from rust-toolchain.toml"
+          exit 1
+        fi
+        echo "channel=$channel" >> "$GITHUB_OUTPUT"
+        echo "Using Rust $channel"
+
+    - name: Install Rust
+      if: inputs.rust == 'true'
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ steps.toolchain.outputs.channel }}
+        components: rustfmt, clippy
+        targets: ${{ inputs.targets }}
+
+    - name: Cache Rust builds
+      if: inputs.rust == 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ inputs.cache-key }}
+        # `spool` links a webview and a tray; a cold build is minutes, not
+        # seconds. Cache on failure too, so a red run still warms the next one.
+        cache-on-failure: 'true'
+
+    # webkit2gtk is the webview, ayatana-appindicator is the tray, librsvg
+    # renders the icon, patchelf rewrites the AppImage's rpaths. Missing any one
+    # of them fails late and confusingly.
+    - name: Install Tauri's Linux system dependencies
+      if: runner.os == 'Linux' && inputs.linux-deps == 'true'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential \
+          file \
+          libayatana-appindicator3-dev \
+          libgtk-3-dev \
+          librsvg2-dev \
+          libssl-dev \
+          libwebkit2gtk-4.1-dev \
+          libxdo-dev \
+          patchelf
+
+    - name: Install pnpm
+      if: inputs.node == 'true'
+      # Version comes from `packageManager` in package.json.
+      uses: pnpm/action-setup@v6
+
+    - name: Install Node
+      if: inputs.node == 'true'
+      uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+
+    - name: Install frontend dependencies
+      if: inputs.node == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

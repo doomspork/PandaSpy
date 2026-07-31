@@ -1,0 +1,81 @@
+# cargo-deny policy. Run with `cargo deny check`.
+#
+# Four questions, asked on every CI run:
+#   advisories  does anything we depend on have a known vulnerability?
+#   licenses    are we allowed to ship it?
+#   bans        are we carrying the same library three times?
+#   sources     did it come from somewhere we trust?
+#
+# Spool talks TLS to devices on a user's LAN and stores their access codes.
+# "We did not notice the advisory" is not a defence.
+
+[graph]
+# Only the platforms Spool actually ships on. Without this, cargo-deny pulls in
+# dependency trees for targets nobody builds (wasm, Android, the BSDs) and
+# reports advisories against crates that never reach a user.
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+  "x86_64-unknown-linux-gnu",
+]
+all-features = false
+
+[advisories]
+version = 2
+# Fail on anything in the RustSec database. Add an exception here — with the
+# advisory id and a written reason — rather than lowering this.
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+# Permissive licences only. Spool ships as a signed desktop binary; a copyleft
+# dependency would place obligations on that distribution that this project has
+# not thought through.
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "ISC",
+  "MIT",
+  "MIT-0",
+  "MPL-2.0",
+  "OpenSSL",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+# A crate is only "licensed" if we are at least this sure about it.
+confidence-threshold = 0.9
+# Several entries above are not in the tree yet — they are here for the TLS and
+# MQTT stacks that are coming. Warning about each of them on every run trains
+# people to ignore this tool's output.
+unused-allowed-license = "allow"
+
+# NOTE for whoever adds rustls: `ring` ships a composite licence file that no
+# SPDX expression captures, and cargo-deny will stop the build over it. It needs
+# a `[[licenses.clarify]]` entry with the hash cargo-deny prints in the error.
+# Take the hash from the error message; do not guess one.
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Print every path to a duplicated crate, not just the shortest — the shortest
+# is rarely the one you can actually do something about.
+highlight = "all"
+deny = [
+  # If a TLS stack ever appears here it must be rustls. Linking the system
+  # OpenSSL would mean three different certificate stories on three platforms —
+  # exactly the per-platform divergence this repository is arranged to prevent.
+  { name = "openssl-sys", reason = "use rustls; see CLAUDE.md § The one architectural rule" },
+  { name = "native-tls", reason = "use rustls; see CLAUDE.md § The one architectural rule" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

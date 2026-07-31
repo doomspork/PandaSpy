@@ -1,0 +1,69 @@
+name: Release
+
+# Attaches installers to a release that ALREADY EXISTS. It never creates one —
+# Release Please owns tags and releases, and two things creating releases is
+# how you end up with v0.4.0 and v0.4.0-1.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of an existing release to (re)build and attach to, e.g. v0.2.0
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  # Keyed by tag: two runs uploading to the same release would race, but
+  # rebuilding v0.2.0 while v0.3.0 is building is fine.
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve the target release
+    runs-on: ubuntu-22.04
+    outputs:
+      release-id: ${{ steps.release.outputs.id }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Look up the release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_ID: ${{ github.event.release.id }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            id="$EVENT_ID"
+            tag="$EVENT_TAG"
+          else
+            tag="$INPUT_TAG"
+            # Fails loudly if the tag has no release: this workflow attaches to
+            # releases, it does not invent them.
+            id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" --jq .id)
+          fi
+          echo "Attaching to release ${tag} (id ${id})"
+          echo "id=${id}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+  attach:
+    name: Build and attach
+    needs: resolve
+    uses: ./.github/workflows/build.yml
+    with:
+      release-id: ${{ needs.resolve.outputs.release-id }}
+      # Build the tagged commit, not whatever main has drifted to since.
+      ref: ${{ needs.resolve.outputs.tag }}
+      # latest.json needs signed bundles. Set the repository variable
+      # SPOOL_UPDATER_ENABLED to "true" once TAURI_SIGNING_PRIVATE_KEY exists
+      # and tauri.conf.json has a `plugins.updater` public key — no workflow
+      # edit required.
+      updater-json: ${{ vars.SPOOL_UPDATER_ENABLED == 'true' }}
+    secrets: inherit

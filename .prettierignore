@@ -10,8 +10,12 @@ src-tauri/
 crates/
 xtask/
 
-# Owned by Release Please. Reformatting it produces noise in every release PR.
+# Owned by Release Please, which rewrites them in its own style on every
+# release PR. If prettier also has an opinion, that PR fails CI for a reason
+# nobody can act on — Release Please will just reformat it again next time.
 CHANGELOG.md
+.release-please-manifest.json
+release-please-config.json
 
 # Fluent is not a format prettier understands; reflowing it would corrupt
 # multiline patterns.

@@ -1,0 +1,44 @@
+name: Commit conventions
+
+on:
+  pull_request:
+    # `edited` matters: the title is checked, and titles get fixed after the
+    # fact. Without it, a corrected title never gets re-checked.
+    types: [opened, edited, synchronize, reopened]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: Conventional Commits
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # commitlint walks a commit range, so the shallow default is not
+          # enough.
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+        with:
+          rust: 'false'
+          linux-deps: 'false'
+
+      # Both the title and the commits are checked, because either one can
+      # become the permanent history: a squash merge keeps the title, a merge
+      # commit keeps the commits. Release Please reads whichever survives.
+      - name: Pull-request title
+        if: github.event_name == 'pull_request'
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$TITLE" | pnpm exec commitlint --verbose
+
+      - name: Commits in the pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          pnpm exec commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to "${{ github.event.pull_request.head.sha }}" \
+            --verbose

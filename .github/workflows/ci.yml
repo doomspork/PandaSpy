@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust (fmt, clippy, test)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          cache-key: ci-rust
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      # `--locked` everywhere below is load-bearing, not habit. Release Please
+      # bumps Cargo.toml and Cargo.lock together; if that ever drifts, this is
+      # where it surfaces — before a release, not during one.
+      - name: Cargo.lock is in sync with the manifests
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo nextest run --workspace --locked
+
+  purity:
+    name: bambu-proto stays pure (wasm)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          targets: wasm32-unknown-unknown
+          cache-key: ci-wasm
+          node: 'false'
+          linux-deps: 'false'
+
+      # The cheapest possible proof that bambu-proto has no I/O, no clock and
+      # no platform APIs: build it for a target where none of those exist. If
+      # this fails, something impure got in — find it, do not add a shim.
+      - name: bambu-proto compiles for wasm32-unknown-unknown
+        run: cargo check --package bambu-proto --target wasm32-unknown-unknown --locked
+
+  rules:
+    name: Repository rules (cfg leak, locale parity)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          cache-key: ci-xtask
+          node: 'false'
+          linux-deps: 'false'
+
+      - name: Platform-conditional code stays where it is allowed
+        run: cargo xtask cfg-check
+
+      - name: Every locale matches en-US
+        run: cargo xtask locale-check
+
+  deny:
+    name: Dependency policy
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          # Blank on purpose. The action defaults to `--all-features`, which
+          # would override the target and feature selection deny.toml makes in
+          # its `[graph]` section.
+          arguments: ''
+          # Advisories move without any change on our side, so this job can go
+          # red on a commit that touched nothing. That is the point.
+          command-arguments: --show-stats
+
+  frontend:
+    name: Frontend (format, lint, typecheck)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          rust: 'false'
+          linux-deps: 'false'
+
+      - run: pnpm run check
+
+  bundles:
+    name: Cross-platform bundles
+    # Only on main. Packaging all four targets takes far longer than the checks
+    # above, and a pull request gets its signal from those. This exists so that
+    # "does it still build on Windows?" is answered before a release, not
+    # during one. Drop the `if` to run it on pull requests too.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [rust, purity, rules, frontend]
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
