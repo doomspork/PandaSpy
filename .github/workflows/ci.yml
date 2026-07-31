@@ -85,10 +85,14 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
-          # Blank on purpose. The action defaults to `--all-features`, which
-          # would override the target and feature selection deny.toml makes in
-          # its `[graph]` section.
-          arguments: ''
+          # `--workspace` is load-bearing, not decoration. This repo's root
+          # manifest is a real package (xtask — a Release Please requirement),
+          # so without the flag cargo-deny takes xtask as the ONLY graph root
+          # and never audits rustls, ring, tokio or the Tauri tree at all.
+          # A green run that looked at 26 of ~600 crates is worse than a red
+          # one. (The action's default here is `--all-features`, also wrong:
+          # it would override deny.toml's [graph] selection.)
+          arguments: --workspace
           # Advisories move without any change on our side, so this job can go
           # red on a commit that touched nothing. That is the point.
           command-arguments: --show-stats

@@ -8,6 +8,29 @@
 #
 # PandaSpy talks TLS to devices on a user's LAN and stores their access codes.
 # "We did not notice the advisory" is not a defence.
+#
+# ─── RUN IT AS `cargo deny --workspace check` ────────────────────────────────
+# A bare `cargo deny check` audits ONLY the root package's dependency tree,
+# which here is `xtask` (anyhow, regex, toml, walkdir) — NOT the app. It then
+# reports "advisories ok, bans ok, licenses ok, sources ok" having inspected
+# 26 crates out of roughly 600. That is the most dangerous output this tool can
+# produce, because it looks exactly like success.
+#
+# cargo-deny treats every workspace member as a graph root only when the root
+# manifest is VIRTUAL. Ours is not: the root is also the `xtask` package, which
+# CLAUDE.md § Releases explains is load-bearing for Release Please. So without
+# `--workspace`, cargo-deny takes `xtask` as the sole root and never sees
+# rustls, ring, tokio, or anything in `crates/` and `src-tauri`.
+#
+# CI passes the flag (the cargo-deny-action step in ci.yml) and there is a
+# comment there explaining why it must stay. It cannot be moved into this file:
+# `[graph]` accepts only targets / exclude / features / all-features /
+# no-default-features / exclude-dev / exclude-unpublished. There is no config
+# key for it in any cargo-deny version.
+#
+# So a bare local run is NOT the same check CI runs, and will pass when CI
+# fails. Always type the flag.
+# ─────────────────────────────────────────────────────────────────────────────
 
 [graph]
 # Only the platforms PandaSpy actually ships on. Without this, cargo-deny pulls in
@@ -26,7 +49,64 @@ version = 2
 # Fail on anything in the RustSec database. Add an exception here — with the
 # advisory id and a written reason — rather than lowering this.
 yanked = "deny"
-ignore = []
+
+# ─── The bar for an entry in `ignore` ────────────────────────────────────────
+# Everything parked below is an `unmaintained` NOTICE. Not one is a
+# vulnerability: none has a CVSS score, an affected-function range, or a patched
+# version, and every one of them says "No safe upgrade is available!".
+#
+# A real vulnerability id must NEVER be added to this list without a written
+# exposure analysis in the comment saying why PandaSpy cannot reach the affected
+# code path. "It comes in through Tauri" is an adequate reason to accept an
+# unmaintained notice — it is NOT a reason to accept a vulnerability. This
+# project ships a binary that holds users' printer access codes; an ignored
+# advisory has to be a decision someone made, not a line someone pasted to get
+# a green tick.
+#
+# RE-AUDIT EVERY ENTRY WHEN THE TAURI MAJOR OR MINOR IS BUMPED. All 16 arrive
+# through `tauri`, pinned here at tauri 2.11.5 / tauri-utils 2.9.3. Upstream
+# moving the Linux backend off GTK3, or tauri-utils dropping `urlpattern`,
+# retires an entire group at once — and an ignore that outlives its cause is a
+# silenced alarm. cargo-deny helps here: an entry matching nothing is reported
+# as `warning[advisory-not-detected] … no crate matched advisory criteria`. It
+# is only a WARNING, so it will not fail the build — read the warnings after a
+# dependency bump and delete what has gone quiet.
+ignore = [
+  # ── gtk-rs GTK3 bindings (10) ──────────────────────────────────────────────
+  # Pulled in by tauri → tao / wry / tray-icon / muda. The entire gtk-rs 0.18
+  # family was retired upstream when the project moved to GTK4; Tauri v2's Linux
+  # backend is still GTK3, so this is not a dependency PandaSpy selects or can
+  # drop from here. Reached only on the x86_64-unknown-linux-gnu target.
+  { id = "RUSTSEC-2024-0411", reason = "gdkwayland-sys 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0412", reason = "gdk 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0413", reason = "atk 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0414", reason = "gdkx11-sys 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0415", reason = "gtk 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0416", reason = "atk-sys 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0417", reason = "gdkx11 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0418", reason = "gdk-sys 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0419", reason = "gtk3-macros 0.18.2, GTK3 binding via tauri; no successor release" },
+  { id = "RUSTSEC-2024-0420", reason = "gtk-sys 0.18.2, GTK3 binding via tauri; no successor release" },
+
+  # ── proc-macro-error (1) ───────────────────────────────────────────────────
+  # Same tree, one level deeper: glib-macros → glib → atk / gtk. Unmaintained
+  # because its author became unreachable. It is a proc-macro, so it runs at
+  # build time on a developer's or CI machine and no part of it is linked into
+  # the shipped binary. Goes away with the GTK3 group above.
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error 1.0.4, build-time only, via glib-macros in the GTK3 tree" },
+
+  # ── rust-unic Unicode crates (5) ───────────────────────────────────────────
+  # Pulled in by tauri-utils → urlpattern. The whole open-i18n/rust-unic project
+  # is unmaintained; the advisories' own advice is to use std's char range
+  # support, which is a change only urlpattern can make. Note these are NOT the
+  # `unic-langid` family PandaSpy uses for i18n — that is separately maintained
+  # and unaffected. Do not merge the two groups.
+  { id = "RUSTSEC-2025-0075", reason = "unic-char-range 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
+  { id = "RUSTSEC-2025-0080", reason = "unic-common 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
+  { id = "RUSTSEC-2025-0081", reason = "unic-char-property 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
+  { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
+  { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
+]
 
 [licenses]
 version = 2
@@ -56,14 +136,35 @@ confidence-threshold = 0.9
 # people to ignore this tool's output.
 unused-allowed-license = "allow"
 
-# NOTE for whoever adds rustls: `ring` ships a composite licence file that no
-# SPDX expression captures, and cargo-deny will stop the build over it. It needs
-# a `[[licenses.clarify]]` entry with the hash cargo-deny prints in the error.
-# Take the hash from the error message; do not guess one.
+# rustls has landed, and `ring` turned out NOT to need a `[[licenses.clarify]]`.
+# The old warning here (and in CLAUDE.md § Known gaps) described ring 0.16 and
+# early 0.17, which shipped a composite LICENSE file and no `license` field.
+# ring 0.17.14 declares `license = "Apache-2.0 AND ISC"` in its own manifest,
+# and cargo-deny reads that in preference to the file, so there is no hash to
+# take and nothing to clarify. Both halves are already allowed above.
+# Verified against ring 0.17.14 with cargo-deny 0.20.2:
+# `cargo deny --workspace check licenses` passes with no clarify entry.
+#
+# If a future ring drops the manifest field and the error comes back, the old
+# advice still holds: take the hash from cargo-deny's output, never guess one.
+#
+# `OpenSSL` above is now provably unused — it was added in anticipation of ring
+# needing it. Kept because `unused-allowed-license = "allow"` makes it free, but
+# it is a candidate for removal: this project bans openssl-sys and native-tls
+# outright, so an OpenSSL-licensed crate arriving is a thing to notice, not wave
+# through.
 
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# …except for path dependencies, which is the only kind we have. The internal
+# crates in `[workspace.dependencies]` are declared path-only with NO version
+# (CLAUDE.md § Releases: "there is no pin that can go stale"), and cargo-deny
+# reads a missing version as `*`. Without this, a workspace-scoped run fails
+# with four `wildcard` errors for pandaspy-{proto,discovery,client,store} —
+# an artefact of the versioning policy, not a real unpinned dependency. This
+# allowance covers path deps only; a wildcard on a registry crate still fails.
+allow-wildcard-paths = true
 # Print every path to a duplicated crate, not just the shortest — the shortest
 # is rarely the one you can actually do something about.
 highlight = "all"
