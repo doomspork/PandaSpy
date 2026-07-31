@@ -6,7 +6,7 @@ place user-facing strings live.**
 ## The contract
 
 * One directory per locale, named with a BCP-47 tag: `en-US`, `pl-PL`.
-* Inside it, one `.ftl` file per bundle: `app.ftl`, `hms.ftl`.
+* Inside it, one `.ftl` file per bundle (currently just `app.ftl`).
 * **`en-US` is the reference locale.** Every other locale must define exactly
   the same set of keys — messages, terms and attributes alike.
 * Both sides of the app read these same files. `fluent-rs` embeds them into the
