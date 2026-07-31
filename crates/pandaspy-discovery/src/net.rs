@@ -183,7 +183,8 @@ fn bind_search(ip: Ipv4Addr) -> io::Result<UdpSocket> {
 
 // ─── The certificate probe ───────────────────────────────────────────────
 
-/// Accepts every certificate presented, without exception.
+/// Accepts every certificate CHAIN presented, but still verifies the
+/// handshake signature (see the verify methods below).
 ///
 /// **This is not a TLS client that trusts printers. It is a certificate
 /// reader.** The probe's entire job is to obtain the DER a listener on port
@@ -219,28 +220,43 @@ impl ServerCertVerifier for AcceptAnyCertificate {
         Ok(ServerCertVerified::assertion())
     }
 
+    // The CHAIN is accepted (a printer's leaf is self-signed), but the
+    // handshake SIGNATURE is still verified — delegated to rustls's own
+    // checker. The probe only reads a serial and sends nothing, so a stub here
+    // would not leak a secret, but it would let a keyless impostor inject a
+    // spoofed serial into the discovery list. Verifying the signature means the
+    // serial the probe reports belongs to a peer that actually holds the key.
     fn verify_tls12_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
+        rustls::crypto::verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &self.provider.signature_verification_algorithms,
+        )
     }
 
     fn verify_tls13_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
+        rustls::crypto::verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &self.provider.signature_verification_algorithms,
+        )
     }
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        // Answered honestly from the provider even though the verdict is
-        // fixed: this list goes out in the ClientHello, and lying about it
-        // would make the handshake fail before a certificate ever arrives.
+        // This list goes out in the ClientHello, so it must be the provider's
+        // real set or the handshake fails before a certificate ever arrives.
         self.provider
             .signature_verification_algorithms
             .supported_schemes()
