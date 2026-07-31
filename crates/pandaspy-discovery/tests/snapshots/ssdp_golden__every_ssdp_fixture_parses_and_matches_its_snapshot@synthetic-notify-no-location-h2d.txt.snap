@@ -1,0 +1,32 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-notify-no-location-h2d.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "cache-control": "max-age=1800",
+      "devbind.bambu.com": "free",
+      "devconnect.bambu.com": "lan",
+      "devmodel.bambu.com": "O1D",
+      "devname.bambu.com": "REDACTED-NAME",
+      "devsignal.bambu.com": "-51",
+      "host": "239.255.255.250:2021",
+      "nt": "urn:bambulab-com:device:3dprinter:1",
+      "server": "UPnP/1.0",
+      "usn": "09400A000000000"
+    },
+    "kind": "Notify"
+  },
+  "printer": {
+    "address": "192.168.0.2",
+    "bind_state": "free",
+    "connect_mode": "lan",
+    "model": "O1D",
+    "name": "REDACTED-NAME",
+    "serial": "09400A000000000",
+    "signal_dbm": -51,
+    "source": "Ssdp"
+  }
+}

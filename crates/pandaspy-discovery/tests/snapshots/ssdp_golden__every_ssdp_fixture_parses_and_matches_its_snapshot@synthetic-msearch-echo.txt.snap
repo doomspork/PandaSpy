@@ -1,0 +1,17 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-msearch-echo.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "host": "239.255.255.250:2021",
+      "man": "\"ssdp:discover\"",
+      "mx": "3",
+      "st": "urn:bambulab-com:device:3dprinter:1"
+    },
+    "kind": "MSearch"
+  },
+  "printer": null
+}

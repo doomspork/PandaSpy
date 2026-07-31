@@ -1,0 +1,4 @@
+# Fixtures are byte-for-byte recordings. Never let git "helpfully" convert
+# line endings — SSDP datagrams are CRLF-delimited, and a checkout that
+# rewrites them changes what the corpus tests.
+fixtures/** -text

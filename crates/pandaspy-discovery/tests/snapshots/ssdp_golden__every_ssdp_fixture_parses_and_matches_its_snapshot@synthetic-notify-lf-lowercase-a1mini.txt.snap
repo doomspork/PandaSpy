@@ -1,0 +1,33 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-notify-lf-lowercase-a1mini.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "cache-control": "max-age=1800",
+      "devbind.bambu.com": "free",
+      "devconnect.bambu.com": "lan",
+      "devmodel.bambu.com": "N1",
+      "devname.bambu.com": "REDACTED-NAME",
+      "devsignal.bambu.com": "-67",
+      "host": "239.255.255.250:2021",
+      "location": "192.168.0.4",
+      "nt": "urn:bambulab-com:device:3dprinter:1",
+      "server": "UPnP/1.0",
+      "usn": "03900A000000000"
+    },
+    "kind": "Notify"
+  },
+  "printer": {
+    "address": "192.168.0.4",
+    "bind_state": "free",
+    "connect_mode": "lan",
+    "model": "N1",
+    "name": "REDACTED-NAME",
+    "serial": "03900A000000000",
+    "signal_dbm": -67,
+    "source": "Ssdp"
+  }
+}

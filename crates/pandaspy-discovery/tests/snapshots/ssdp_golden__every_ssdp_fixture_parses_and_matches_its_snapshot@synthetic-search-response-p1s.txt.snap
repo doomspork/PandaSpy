@@ -1,0 +1,33 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-search-response-p1s.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "cache-control": "max-age=1800",
+      "devbind.bambu.com": "free",
+      "devconnect.bambu.com": "lan",
+      "devmodel.bambu.com": "C12",
+      "devname.bambu.com": "REDACTED-NAME",
+      "devsignal.bambu.com": "-58",
+      "host": "239.255.255.250:2021",
+      "location": "192.168.0.3",
+      "server": "UPnP/1.0",
+      "st": "urn:bambulab-com:device:3dprinter:1",
+      "usn": "01P00A000000000"
+    },
+    "kind": "SearchResponse"
+  },
+  "printer": {
+    "address": "192.168.0.3",
+    "bind_state": "free",
+    "connect_mode": "lan",
+    "model": "C12",
+    "name": "REDACTED-NAME",
+    "serial": "01P00A000000000",
+    "signal_dbm": -58,
+    "source": "Ssdp"
+  }
+}

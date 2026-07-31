@@ -1,0 +1,15 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-search-response-404.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "host": "239.255.255.250:2021",
+      "server": "UPnP/1.0"
+    },
+    "kind": "Unknown"
+  },
+  "printer": null
+}

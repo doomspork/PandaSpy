@@ -1,0 +1,26 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-notify-colonless-header.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "devmodel.bambu.com": "C12",
+      "host": "239.255.255.250:2021",
+      "location": "192.168.0.8",
+      "usn": "01P00A000000000"
+    },
+    "kind": "Notify"
+  },
+  "printer": {
+    "address": "192.168.0.8",
+    "bind_state": null,
+    "connect_mode": null,
+    "model": "C12",
+    "name": null,
+    "serial": "01P00A000000000",
+    "signal_dbm": null,
+    "source": "Ssdp"
+  }
+}

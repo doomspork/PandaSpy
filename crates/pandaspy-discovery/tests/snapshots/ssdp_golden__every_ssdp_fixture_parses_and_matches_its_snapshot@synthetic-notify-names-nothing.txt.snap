@@ -1,0 +1,16 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "serde_json::json!({ \"announcement\": announcement, \"printer\": printer, })"
+input_file: fixtures/ssdp/synthetic-notify-names-nothing.txt
+---
+{
+  "announcement": {
+    "headers": {
+      "host": "239.255.255.250:2021",
+      "location": "192.168.0.9",
+      "nt": "urn:bambulab-com:device:3dprinter:1"
+    },
+    "kind": "Notify"
+  },
+  "printer": null
+}

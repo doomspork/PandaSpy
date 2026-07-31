@@ -1,0 +1,6 @@
+---
+source: crates/pandaspy-discovery/tests/ssdp_golden.rs
+expression: "\"not ssdp\""
+input_file: fixtures/ssdp/synthetic-not-ssdp.txt
+---
+not ssdp
