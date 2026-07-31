@@ -2,10 +2,13 @@
 //!
 //! # What belongs here
 //!
-//! * wire types for the MQTT report/request payloads
-//! * the codec that turns those payloads into domain types and back
-//! * the state merge that folds partial reports into a full [`PrinterState`]
-//! * the HMS (Health Management System) error-code table
+//! * the MQTT-carried wire contract: topics, request payloads, report
+//!   classification ([`wire`])
+//! * the state merge that folds a `pushall` snapshot plus sparse deltas into
+//!   a [`PrinterState`] ([`StateAccumulator`], [`merge`])
+//! * the typed model: job status, stages, AMS units and trays, HMS entries
+//! * HMS/error text resolution from an embedded table snapshot ([`hms`]) —
+//!   never fetched at runtime; offline-first is a privacy commitment
 //!
 //! # What does not
 //!
@@ -22,18 +25,29 @@
 //! surprises is a parser that bricks the app on the next firmware drop, so:
 //!
 //! * every field is `Option<T>` — absence is normal, not an error
-//! * every enum keeps an `Unknown(String)` variant that round-trips the raw
-//!   value instead of failing
+//! * every enum keeps an `Unknown(…)` variant that round-trips the raw value
+//!   instead of failing
+//! * numbers are parsed leniently — the same field arrives as `28.5` and
+//!   `"28.5"` depending on model and firmware
 //! * `#[serde(deny_unknown_fields)]` is banned
 //!
-//! See `CLAUDE.md` § Serde discipline.
+//! See `CLAUDE.md` § Serde discipline. Any change to parsing behaviour
+//! requires a fixture under `fixtures/` — no exceptions.
 
+pub mod ams;
+mod de;
 mod error;
-mod hms;
+pub mod hms;
+pub mod job;
+pub mod merge;
 mod model;
 mod state;
+pub mod wire;
 
+pub use ams::{ActiveTray, AmsSystem, AmsUnit, AmsUnitType, Tray};
 pub use error::ProtoError;
-pub use hms::{HmsCode, HmsSeverity, lookup_hms};
+pub use hms::{HmsEntry, HmsModule, HmsSeverity};
+pub use job::{GcodeState, PrintStage, PrinterStatus};
 pub use model::{DeviceSerial, PrinterModel};
-pub use state::{JobStage, PrinterState};
+pub use state::{LightReport, NozzleType, PrinterState, StateAccumulator, fan_gear_to_percent};
+pub use wire::{InfoReport, ModuleInfo, Report, ReportKind, Request};

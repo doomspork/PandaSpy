@@ -1,0 +1,39 @@
+{
+  "print": {
+    "command": "push_status",
+    "msg": 0,
+    "sequence_id": "4",
+    "gcode_state": "IDLE",
+    "gcode_file": "",
+    "subtask_name": "",
+    "print_type": "idle",
+    "stg_cur": -1,
+    "mc_percent": 0,
+    "mc_remaining_time": 0,
+    "layer_num": 0,
+    "total_layer_num": 0,
+    "bed_temper": 22.1,
+    "bed_target_temper": 0.0,
+    "nozzle_temper": 23.4,
+    "nozzle_target_temper": 0.0,
+    "cooling_fan_speed": "0",
+    "big_fan1_speed": "0",
+    "big_fan2_speed": "0",
+    "heatbreak_fan_speed": "0",
+    "spd_lvl": 2,
+    "spd_mag": 100,
+    "nozzle_diameter": "0.4",
+    "nozzle_type": "stainless_steel",
+    "wifi_signal": "-61dBm",
+    "sdcard": true,
+    "print_error": 0,
+    "hms": [],
+    "lights_report": [{ "node": "chamber_light", "mode": "off" }],
+    "vt_tray": {
+      "id": "254",
+      "tray_type": "PLA",
+      "tray_color": "FFFFFFFF",
+      "remain": -1
+    }
+  }
+}

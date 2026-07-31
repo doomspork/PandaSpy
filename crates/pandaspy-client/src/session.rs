@@ -43,8 +43,10 @@ impl fmt::Debug for Credentials {
 #[non_exhaustive]
 pub enum SessionEvent {
     Connected,
-    /// A full or partial report. Callers fold it in with
-    /// [`PrinterState::merge_from`].
+    /// The accumulated state after a report was folded in by the
+    /// session's [`pandaspy_proto::StateAccumulator`]. Always a complete
+    /// picture — the session owns the accumulator, so subscribers never see
+    /// a bare delta.
     Report(Box<PrinterState>),
     Disconnected {
         /// Human-readable, already localised by the time it reaches the UI.

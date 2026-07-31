@@ -1,0 +1,43 @@
+---
+source: crates/pandaspy-proto/tests/golden.rs
+expression: info
+input_file: fixtures/reports/synthetic-x1c-get-version.json
+---
+{
+  "command": "get_version",
+  "sequence_id": "0",
+  "module": [
+    {
+      "name": "ota",
+      "sw_ver": "01.08.02.00",
+      "hw_ver": "",
+      "sn": "00M09A000000000",
+      "loader_ver": null,
+      "flag": null
+    },
+    {
+      "name": "esp32",
+      "sw_ver": "01.13.12.66",
+      "hw_ver": "AP04",
+      "sn": "00000000000000",
+      "loader_ver": null,
+      "flag": null
+    },
+    {
+      "name": "mc",
+      "sw_ver": "00.00.30.15",
+      "hw_ver": "MC07",
+      "sn": "0000000000000000",
+      "loader_ver": null,
+      "flag": null
+    },
+    {
+      "name": "ams/0",
+      "sw_ver": "00.00.06.49",
+      "hw_ver": "AMS08",
+      "sn": "00000000000000000",
+      "loader_ver": null,
+      "flag": null
+    }
+  ]
+}

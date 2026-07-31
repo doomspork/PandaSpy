@@ -1,0 +1,69 @@
+---
+source: crates/pandaspy-proto/tests/golden.rs
+expression: state
+input_file: fixtures/reports/synthetic-x1-hms-error.json
+---
+{
+  "nozzle_temper": 24.9,
+  "nozzle_target_temper": 0.0,
+  "bed_temper": 89.7,
+  "bed_target_temper": 90.0,
+  "chamber_temper": 41.0,
+  "cooling_fan_speed": 0,
+  "big_fan1_speed": 0,
+  "big_fan2_speed": 15,
+  "heatbreak_fan_speed": 15,
+  "gcode_state": "PAUSE",
+  "gcode_file": "bracket.gcode",
+  "subtask_name": "bracket",
+  "mc_percent": 63,
+  "mc_remaining_time": 44,
+  "layer_num": 140,
+  "total_layer_num": 221,
+  "stg_cur": 20,
+  "print_type": "local",
+  "print_error": 50347008,
+  "spd_lvl": 2,
+  "spd_mag": 100,
+  "nozzle_diameter": "0.6",
+  "nozzle_type": "hardened_steel",
+  "wifi_signal": "-58dBm",
+  "sdcard": true,
+  "home_flag": null,
+  "lights_report": [
+    {
+      "node": "chamber_light",
+      "mode": "on"
+    }
+  ],
+  "ams": null,
+  "vt_tray": {
+    "id": 254,
+    "tray_type": "",
+    "tray_color": "00000000",
+    "cols": [],
+    "tray_info_idx": null,
+    "tray_id_name": null,
+    "tray_sub_brands": null,
+    "remain": null,
+    "k": null,
+    "n": null,
+    "nozzle_temp_min": null,
+    "nozzle_temp_max": null,
+    "bed_temp": null,
+    "tray_diameter": null,
+    "tray_weight": null,
+    "tag_uid": null,
+    "tray_uuid": null
+  },
+  "hms": [
+    {
+      "attr": 50332160,
+      "code": 65537
+    },
+    {
+      "attr": 117473280,
+      "code": 131074
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+---
+source: crates/pandaspy-proto/tests/golden.rs
+expression: state
+input_file: fixtures/reports/synthetic-p1p-idle.json
+---
+{
+  "nozzle_temper": 23.4,
+  "nozzle_target_temper": 0.0,
+  "bed_temper": 22.1,
+  "bed_target_temper": 0.0,
+  "chamber_temper": null,
+  "cooling_fan_speed": 0,
+  "big_fan1_speed": 0,
+  "big_fan2_speed": 0,
+  "heatbreak_fan_speed": 0,
+  "gcode_state": "IDLE",
+  "gcode_file": "",
+  "subtask_name": "",
+  "mc_percent": 0,
+  "mc_remaining_time": 0,
+  "layer_num": 0,
+  "total_layer_num": 0,
+  "stg_cur": -1,
+  "print_type": "idle",
+  "print_error": 0,
+  "spd_lvl": 2,
+  "spd_mag": 100,
+  "nozzle_diameter": "0.4",
+  "nozzle_type": "stainless_steel",
+  "wifi_signal": "-61dBm",
+  "sdcard": true,
+  "home_flag": null,
+  "lights_report": [
+    {
+      "node": "chamber_light",
+      "mode": "off"
+    }
+  ],
+  "ams": null,
+  "vt_tray": {
+    "id": 254,
+    "tray_type": "PLA",
+    "tray_color": "FFFFFFFF",
+    "cols": [],
+    "tray_info_idx": null,
+    "tray_id_name": null,
+    "tray_sub_brands": null,
+    "remain": -1,
+    "k": null,
+    "n": null,
+    "nozzle_temp_min": null,
+    "nozzle_temp_max": null,
+    "bed_temp": null,
+    "tray_diameter": null,
+    "tray_weight": null,
+    "tag_uid": null,
+    "tray_uuid": null
+  },
+  "hms": []
+}

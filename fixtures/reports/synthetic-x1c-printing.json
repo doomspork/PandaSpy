@@ -1,0 +1,99 @@
+{
+  "print": {
+    "command": "push_status",
+    "msg": 0,
+    "sequence_id": "2021",
+    "gcode_state": "RUNNING",
+    "gcode_file": "benchy_plate_1.gcode",
+    "subtask_name": "benchy",
+    "print_type": "local",
+    "stg_cur": 0,
+    "mc_percent": 42,
+    "mc_remaining_time": 96,
+    "layer_num": 57,
+    "total_layer_num": 137,
+    "bed_temper": 54.8,
+    "bed_target_temper": 55.0,
+    "nozzle_temper": 219.6,
+    "nozzle_target_temper": 220.0,
+    "chamber_temper": 31.0,
+    "cooling_fan_speed": "15",
+    "big_fan1_speed": "9",
+    "big_fan2_speed": "11",
+    "heatbreak_fan_speed": "15",
+    "spd_lvl": 2,
+    "spd_mag": 100,
+    "nozzle_diameter": "0.4",
+    "nozzle_type": "hardened_steel",
+    "wifi_signal": "-46dBm",
+    "sdcard": true,
+    "home_flag": 6407,
+    "print_error": 0,
+    "hms": [],
+    "lights_report": [{ "node": "chamber_light", "mode": "on" }],
+    "ams": {
+      "ams_exist_bits": "1",
+      "tray_exist_bits": "b",
+      "tray_is_bbl_bits": "b",
+      "tray_read_done_bits": "b",
+      "tray_now": "1",
+      "tray_pre": "255",
+      "tray_tar": "1",
+      "version": 518,
+      "insert_flag": true,
+      "power_on_flag": false,
+      "ams": [
+        {
+          "id": "0",
+          "humidity": "3",
+          "temp": "28.4",
+          "tray": [
+            {
+              "id": "0",
+              "tray_type": "PLA",
+              "tray_color": "00AE42FF",
+              "tray_info_idx": "GFA00",
+              "tray_id_name": "A00-G1",
+              "tray_sub_brands": "PLA Basic",
+              "remain": 92,
+              "k": 0.02,
+              "n": 1.0,
+              "nozzle_temp_min": "190",
+              "nozzle_temp_max": "230",
+              "bed_temp": "35",
+              "tray_diameter": "1.75",
+              "tray_weight": "250",
+              "tag_uid": "0000000000000000",
+              "tray_uuid": "00000000000000000000000000000000"
+            },
+            {
+              "id": "1",
+              "tray_type": "PETG",
+              "tray_color": "1B2430FF",
+              "tray_info_idx": "GFG00",
+              "remain": 61,
+              "nozzle_temp_min": "230",
+              "nozzle_temp_max": "260",
+              "tag_uid": "0000000000000000",
+              "tray_uuid": "00000000000000000000000000000000"
+            },
+            { "id": "2" },
+            {
+              "id": "3",
+              "tray_type": "TPU",
+              "tray_color": "F5A623FF",
+              "remain": -1,
+              "tag_uid": "0000000000000000",
+              "tray_uuid": "00000000000000000000000000000000"
+            }
+          ]
+        }
+      ]
+    },
+    "vt_tray": {
+      "id": "254",
+      "tray_type": "",
+      "tray_color": "00000000"
+    }
+  }
+}
