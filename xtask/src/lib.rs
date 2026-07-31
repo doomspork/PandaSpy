@@ -1,4 +1,4 @@
-//! Repository automation for Spool.
+//! Repository automation for PandaSpy.
 //!
 //! These checks are Rust rather than shell scripts for one reason: they must
 //! produce identical results on a maintainer's Mac, a contributor's Windows
@@ -9,7 +9,7 @@
 //! quietly forking into per-platform variants:
 //!
 //! * [`cfg_leak`] — platform-conditional compilation may appear only in
-//!   `src-tauri/` and `crates/bambu-store/`.
+//!   `src-tauri/` and `crates/pandaspy-store/`.
 //! * [`locale`] — every locale defines exactly the keys `en-US` defines.
 //!
 //! Run them with `cargo xtask cfg-check` / `cargo xtask locale-check`, or the

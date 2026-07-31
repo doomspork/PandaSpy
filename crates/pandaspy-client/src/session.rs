@@ -1,7 +1,7 @@
 use std::fmt;
 use std::net::IpAddr;
 
-use bambu_proto::{DeviceSerial, PrinterState};
+use pandaspy_proto::{DeviceSerial, PrinterState};
 
 use crate::pinning::CertificateFingerprint;
 
@@ -17,7 +17,7 @@ pub struct PrinterEndpoint {
 ///
 /// The access code is printed on the printer's screen and is effectively a
 /// password. It is held here only for the duration of a connect; the durable
-/// copy lives in the OS secret store via `bambu-store`.
+/// copy lives in the OS secret store via `pandaspy-store`.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Credentials {
     pub username: String,

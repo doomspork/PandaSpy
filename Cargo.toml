@@ -1,4 +1,4 @@
-# ─── Spool workspace ─────────────────────────────────────────────────────────
+# ─── PandaSpy workspace ─────────────────────────────────────────────────────────
 #
 # NOTE: this manifest is BOTH the workspace root AND a package (`xtask`).
 # That is deliberate and load-bearing. Release Please's `rust` strategy refuses
@@ -13,7 +13,7 @@ edition       = "2024"
 rust-version  = "1.94"
 license       = "MIT"
 publish       = false
-description   = "Repository automation for Spool (locale parity, cfg-leak checks)."
+description   = "Repository automation for PandaSpy (locale parity, cfg-leak checks)."
 
 # Explicit targets: the workspace root directory contains the frontend `src/`,
 # so Cargo's auto-discovery must not go looking for `src/main.rs` there.
@@ -51,10 +51,10 @@ resolver = "3"
 # skipped and its version drifts out of lockstep. Adding a crate means adding a
 # line here.
 members = [
-  "crates/bambu-proto",
-  "crates/bambu-discovery",
-  "crates/bambu-client",
-  "crates/bambu-store",
+  "crates/pandaspy-proto",
+  "crates/pandaspy-discovery",
+  "crates/pandaspy-client",
+  "crates/pandaspy-store",
   "src-tauri",
 ]
 
@@ -63,10 +63,10 @@ members = [
 # package and silently skip every crate.
 default-members = [
   ".",
-  "crates/bambu-proto",
-  "crates/bambu-discovery",
-  "crates/bambu-client",
-  "crates/bambu-store",
+  "crates/pandaspy-proto",
+  "crates/pandaspy-discovery",
+  "crates/pandaspy-client",
+  "crates/pandaspy-store",
   "src-tauri",
 ]
 
@@ -83,10 +83,10 @@ authors      = ["Sean Callan <seancallan@gmail.com>"]
 [workspace.dependencies]
 # Internal crates: path-only, NO version. They are never published, and a
 # version pin here would be invisible to Release Please's updater and go stale.
-bambu-client    = { path = "crates/bambu-client" }
-bambu-discovery = { path = "crates/bambu-discovery" }
-bambu-proto     = { path = "crates/bambu-proto" }
-bambu-store     = { path = "crates/bambu-store" }
+pandaspy-client    = { path = "crates/pandaspy-client" }
+pandaspy-discovery = { path = "crates/pandaspy-discovery" }
+pandaspy-proto     = { path = "crates/pandaspy-proto" }
+pandaspy-store     = { path = "crates/pandaspy-store" }
 
 # Third-party
 anyhow           = "1.0.104"
@@ -111,7 +111,7 @@ missing_debug_implementations = "warn"
 all = { level = "warn", priority = -1 }
 
 # ─── Profiles ────────────────────────────────────────────────────────────────
-# Spool is a tray app that sits idle in the menu bar all day. Optimise the
+# PandaSpy is a tray app that sits idle in the menu bar all day. Optimise the
 # shipped binary for size, not for compile time.
 
 [profile.release]
@@ -119,6 +119,6 @@ codegen-units = 1
 lto           = true
 opt-level     = "s"
 strip         = true
-# NB: no `panic = "abort"`. It would shave a little size, but Spool runs
+# NB: no `panic = "abort"`. It would shave a little size, but PandaSpy runs
 # unattended for days; a panic in one printer's session task must not take the
 # whole tray down with it.

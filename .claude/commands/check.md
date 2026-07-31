@@ -14,7 +14,7 @@ That single command is the gate. It runs, in order:
 1. `cargo fmt --all --check`
 2. `cargo clippy --workspace --all-targets -- -D warnings`
 3. `cargo test --workspace`
-4. `cargo check -p bambu-proto --target wasm32-unknown-unknown`
+4. `cargo check -p pandaspy-proto --target wasm32-unknown-unknown`
 5. `cargo xtask locale-check`
 6. `cargo xtask cfg-check`
 7. `pnpm run check` (prettier, eslint, svelte-check) — skipped with a visible
@@ -24,16 +24,16 @@ That single command is the gate. It runs, in order:
 
 Most are ordinary. These three mean something specific:
 
-**`bambu-proto` fails the wasm build.** Something with I/O, a clock, randomness
+**`pandaspy-proto` fails the wasm build.** Something with I/O, a clock, randomness
 or a platform API got into the pure crate. Do not add a shim or a feature flag
 to make wasm happy — find what was added and move it to the crate that is
 allowed to do it. This check exists to catch exactly that, at the moment it
 happens.
 
 **`cfg-check` reports a violation.** Platform-conditional code appeared outside
-`src-tauri/` and `crates/bambu-store/`. The fix is almost never to add an
+`src-tauri/` and `crates/pandaspy-store/`. The fix is almost never to add an
 allow-list entry. It is to inject the platform difference through a trait —
-`bambu-discovery` and `bambu-client` are already shaped for it. Read
+`pandaspy-discovery` and `pandaspy-client` are already shaped for it. Read
 `CLAUDE.md` § The one architectural rule before deciding otherwise; the
 allow-list has two entries and adding a third is a design decision, not a
 formality.

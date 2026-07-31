@@ -1,4 +1,4 @@
-//! Rust half of Spool's internationalisation.
+//! Rust half of PandaSpy's internationalisation.
 //!
 //! The tray menu and OS notifications are built in Rust, so Rust needs the same
 //! strings the window does. It reads them from the same place: the repository's
@@ -70,7 +70,7 @@ impl Localiser {
             // Fluent wraps placeables in Unicode directional isolate marks by
             // default. Correct for bidirectional text, but they are invisible
             // characters that break `assert_eq!` and menu-item comparisons.
-            // Turn this back on when Spool ships an RTL locale.
+            // Turn this back on when PandaSpy ships an RTL locale.
             bundle.set_use_isolating(false);
 
             let mut loaded_any = false;
@@ -236,7 +236,7 @@ mod tests {
     fn terms_are_resolved_inside_messages() {
         let localiser = Localiser::new();
         // `tray-show = Show { -brand-name }` must not leak the placeable.
-        assert_eq!(localiser.get("tray-show"), "Show Spool");
+        assert_eq!(localiser.get("tray-show"), "Show PandaSpy");
     }
 
     #[test]
@@ -286,6 +286,6 @@ mod tests {
         // user's own build.
         let mut localiser = Localiser::new();
         localiser.set_active("pl-PL");
-        assert_eq!(localiser.get("window-title"), "Spool");
+        assert_eq!(localiser.get("window-title"), "PandaSpy");
     }
 }

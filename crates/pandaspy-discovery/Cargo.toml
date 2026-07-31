@@ -1,5 +1,5 @@
 [package]
-name         = "bambu-discovery"
+name         = "pandaspy-discovery"
 version      = "0.1.0"
 description  = "Finding Bambu Lab printers on the local network (SSDP and subnet probe)."
 edition      = { workspace = true }
@@ -18,7 +18,7 @@ publish      = false
 # `src-tauri`, not in the algorithm. CI enforces this.
 
 [dependencies]
-bambu-proto = { workspace = true }
+pandaspy-proto = { workspace = true }
 thiserror   = { workspace = true }
 
 [lints]

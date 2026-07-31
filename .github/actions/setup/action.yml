@@ -1,4 +1,4 @@
-name: Set up the Spool toolchain
+name: Set up the PandaSpy toolchain
 description: >
   Rust (from rust-toolchain.toml) with cache, Node + pnpm with cache, and the
   Linux system libraries Tauri needs. Every job that touches code uses this, so
@@ -61,7 +61,7 @@ runs:
       uses: Swatinem/rust-cache@v2
       with:
         key: ${{ inputs.cache-key }}
-        # `spool` links a webview and a tray; a cold build is minutes, not
+        # `pandaspy` links a webview and a tray; a cold build is minutes, not
         # seconds. Cache on failure too, so a red run still warms the next one.
         cache-on-failure: 'true'
 

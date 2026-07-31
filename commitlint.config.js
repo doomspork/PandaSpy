@@ -20,10 +20,10 @@ export default {
 			'always',
 			[
 				// Crates, by their directory name minus the `bambu-` prefix.
-				'proto', // crates/bambu-proto
-				'discovery', // crates/bambu-discovery
-				'client', // crates/bambu-client
-				'store', // crates/bambu-store
+				'proto', // crates/pandaspy-proto
+				'discovery', // crates/pandaspy-discovery
+				'client', // crates/pandaspy-client
+				'store', // crates/pandaspy-store
 				'tauri', // src-tauri
 				'xtask', // xtask
 

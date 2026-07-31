@@ -52,7 +52,7 @@ it is a placeholder whose field names do not match the wire format.
 ## 4. Accept the snapshot
 
 ```
-cargo test -p bambu-proto
+cargo test -p pandaspy-proto
 cargo insta review
 ```
 

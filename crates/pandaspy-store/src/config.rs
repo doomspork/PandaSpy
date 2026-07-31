@@ -1,9 +1,9 @@
-use bambu_proto::DeviceSerial;
+use pandaspy_proto::DeviceSerial;
 use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-/// One printer the user has told Spool about.
+/// One printer the user has told PandaSpy about.
 ///
 /// Note what is *not* here: the access code. Config is plain text on disk;
 /// secrets go through [`crate::SecretStore`].
@@ -18,7 +18,7 @@ pub struct PrinterEntry {
     pub nickname: Option<String>,
 }
 
-/// Everything Spool remembers that is not a secret.
+/// Everything PandaSpy remembers that is not a secret.
 ///
 /// Forward compatible by construction: `#[serde(default)]` and optional fields
 /// mean a config written by a newer build still loads in an older one. Users

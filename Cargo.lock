@@ -83,42 +83,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
-name = "bambu-client"
-version = "0.1.0"
-dependencies = [
- "bambu-proto",
- "thiserror 2.0.19",
-]
-
-[[package]]
-name = "bambu-discovery"
-version = "0.1.0"
-dependencies = [
- "bambu-proto",
- "thiserror 2.0.19",
-]
-
-[[package]]
-name = "bambu-proto"
-version = "0.1.0"
-dependencies = [
- "insta",
- "serde",
- "serde_json",
- "thiserror 2.0.19",
-]
-
-[[package]]
-name = "bambu-store"
-version = "0.1.0"
-dependencies = [
- "bambu-proto",
- "serde",
- "serde_json",
- "thiserror 2.0.19",
-]
-
-[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2197,6 +2161,57 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
+name = "pandaspy"
+version = "0.1.0"
+dependencies = [
+ "fluent-bundle",
+ "include_dir",
+ "pandaspy-store",
+ "serde",
+ "serde_json",
+ "sys-locale",
+ "tauri",
+ "tauri-build",
+ "unic-langid",
+]
+
+[[package]]
+name = "pandaspy-client"
+version = "0.1.0"
+dependencies = [
+ "pandaspy-proto",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "pandaspy-discovery"
+version = "0.1.0"
+dependencies = [
+ "pandaspy-proto",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "pandaspy-proto"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "pandaspy-store"
+version = "0.1.0"
+dependencies = [
+ "pandaspy-proto",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2978,21 +2993,6 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
-]
-
-[[package]]
-name = "spool"
-version = "0.1.0"
-dependencies = [
- "bambu-store",
- "fluent-bundle",
- "include_dir",
- "serde",
- "serde_json",
- "sys-locale",
- "tauri",
- "tauri-build",
- "unic-langid",
 ]
 
 [[package]]

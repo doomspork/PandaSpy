@@ -1,7 +1,7 @@
 [package]
-name         = "bambu-store"
+name         = "pandaspy-store"
 version      = "0.1.0"
-description  = "Configuration and secret storage for Spool, behind swappable backends."
+description  = "Configuration and secret storage for PandaSpy, behind swappable backends."
 edition      = { workspace = true }
 rust-version = { workspace = true }
 license      = { workspace = true }
@@ -22,7 +22,7 @@ publish      = false
 # commit that first implements `SecretStore`.
 
 [dependencies]
-bambu-proto = { workspace = true }
+pandaspy-proto = { workspace = true }
 serde       = { workspace = true }
 serde_json  = { workspace = true }
 thiserror   = { workspace = true }

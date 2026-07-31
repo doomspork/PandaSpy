@@ -1,6 +1,6 @@
-### Spool — Health Management System (HMS) error descriptions.
+### PandaSpy — Health Management System (HMS) error descriptions.
 ###
-### `bambu-proto::lookup_hms` maps a printer's HMS code to a message id in this
+### `pandaspy-proto::lookup_hms` maps a printer's HMS code to a message id in this
 ### file. The table maps codes to KEYS, never to English text, so that an error
 ### the printer reports at 3am reads in the user's language.
 ###

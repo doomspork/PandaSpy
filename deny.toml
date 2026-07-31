@@ -6,11 +6,11 @@
 #   bans        are we carrying the same library three times?
 #   sources     did it come from somewhere we trust?
 #
-# Spool talks TLS to devices on a user's LAN and stores their access codes.
+# PandaSpy talks TLS to devices on a user's LAN and stores their access codes.
 # "We did not notice the advisory" is not a defence.
 
 [graph]
-# Only the platforms Spool actually ships on. Without this, cargo-deny pulls in
+# Only the platforms PandaSpy actually ships on. Without this, cargo-deny pulls in
 # dependency trees for targets nobody builds (wasm, Android, the BSDs) and
 # reports advisories against crates that never reach a user.
 targets = [
@@ -30,7 +30,7 @@ ignore = []
 
 [licenses]
 version = 2
-# Permissive licences only. Spool ships as a signed desktop binary; a copyleft
+# Permissive licences only. PandaSpy ships as a signed desktop binary; a copyleft
 # dependency would place obligations on that distribution that this project has
 # not thought through.
 allow = [

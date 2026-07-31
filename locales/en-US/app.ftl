@@ -1,4 +1,4 @@
-### Spool — application shell strings.
+### PandaSpy — application shell strings.
 ###
 ### This file is consumed by BOTH sides of the app: fluent-rs builds the tray
 ### menu and OS notifications from it, and @fluent/bundle builds the window UI
@@ -9,10 +9,10 @@
 
 ## Branding
 
-# The product name. A proper noun — left as "Spool" in every locale. It is a
+# The product name. A proper noun — left as "PandaSpy" in every locale. It is a
 # term rather than a message so that translations can inflect the words around
 # it without the name itself ever being retyped.
--brand-name = Spool
+-brand-name = PandaSpy
 
 ## Application shell
 

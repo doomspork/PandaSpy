@@ -1,7 +1,7 @@
 //! The one architectural rule, mechanised.
 //!
 //! Platform-conditional compilation may appear only in `src-tauri/` and
-//! `crates/bambu-store/`. Everywhere else it is a design error, because it is
+//! `crates/pandaspy-store/`. Everywhere else it is a design error, because it is
 //! the first step on the road that ends with the same protocol implemented
 //! twice and fixed once.
 //!
@@ -29,7 +29,7 @@ pub const SCANNED: &[&str] = &["crates", "xtask"];
 ///
 /// Secret storage is genuinely different per OS — Keychain, Credential Manager,
 /// Secret Service — and no abstraction makes them the same thing.
-pub const ALLOWED: &[&str] = &["crates/bambu-store"];
+pub const ALLOWED: &[&str] = &["crates/pandaspy-store"];
 
 /// `cfg` predicates that are always about the target platform. These are
 /// unambiguous: seeing one anywhere in real code is a violation.
@@ -113,7 +113,7 @@ pub fn check_rust(relative_path: &str, source: &str) -> Vec<Violation> {
             file: relative_path.to_owned(),
             line: Some(line_of(&code, capture.start())),
             message: format!(
-                "`{}` is platform-conditional code outside src-tauri/ and bambu-store/",
+                "`{}` is platform-conditional code outside src-tauri/ and pandaspy-store/",
                 capture.as_str()
             ),
         });
@@ -123,7 +123,7 @@ pub fn check_rust(relative_path: &str, source: &str) -> Vec<Violation> {
         violations.push(Violation {
             file: relative_path.to_owned(),
             line: Some(line_of(&code, capture.start())),
-            message: "platform-conditional `cfg` outside src-tauri/ and bambu-store/".to_owned(),
+            message: "platform-conditional `cfg` outside src-tauri/ and pandaspy-store/".to_owned(),
         });
     }
 
@@ -152,7 +152,7 @@ pub fn check_manifest(relative_path: &str, source: &str) -> Vec<Violation> {
                 .map(|index| index + 1),
             message: format!(
                 "`[target.{selector}]` is a platform-conditional dependency outside \
-                 src-tauri/ and bambu-store/"
+                 src-tauri/ and pandaspy-store/"
             ),
         })
         .collect()
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn a_cfg_attribute_is_caught() {
         let violations = check_rust(
-            "crates/bambu-proto/src/lib.rs",
+            "crates/pandaspy-proto/src/lib.rs",
             "#[cfg(target_os = \"macos\")]\nfn mac_only() {}\n",
         );
 
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn the_repository_itself_is_clean() {
-        // The check that actually gates CI. `bambu-store` contains a real
+        // The check that actually gates CI. `pandaspy-store` contains a real
         // `#[cfg(target_os)]`; this asserting zero proves the allow-list works
         // as well as proving the rest of the tree is clean.
         let violations = check(&crate::repo_root()).unwrap();

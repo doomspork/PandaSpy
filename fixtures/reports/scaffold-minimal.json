@@ -1,5 +1,5 @@
 {
-  "_comment": "SCAFFOLD PLACEHOLDER - not a recording. This exists so the golden-test harness in crates/bambu-proto/tests/golden.rs has something to chew on before the first real payload is captured. Its field names match the placeholder PrinterState, not the wire format. Delete it once real fixtures exist.",
+  "_comment": "SCAFFOLD PLACEHOLDER - not a recording. This exists so the golden-test harness in crates/pandaspy-proto/tests/golden.rs has something to chew on before the first real payload is captured. Its field names match the placeholder PrinterState, not the wire format. Delete it once real fixtures exist.",
   "serial": "00M09A000000000",
   "model": "H2D",
   "stage": "RUNNING",

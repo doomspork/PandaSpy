@@ -43,7 +43,7 @@ jobs:
         run: cargo nextest run --workspace --locked
 
   purity:
-    name: bambu-proto stays pure (wasm)
+    name: pandaspy-proto stays pure (wasm)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
@@ -54,11 +54,11 @@ jobs:
           node: 'false'
           linux-deps: 'false'
 
-      # The cheapest possible proof that bambu-proto has no I/O, no clock and
+      # The cheapest possible proof that pandaspy-proto has no I/O, no clock and
       # no platform APIs: build it for a target where none of those exist. If
       # this fails, something impure got in — find it, do not add a shim.
-      - name: bambu-proto compiles for wasm32-unknown-unknown
-        run: cargo check --package bambu-proto --target wasm32-unknown-unknown --locked
+      - name: pandaspy-proto compiles for wasm32-unknown-unknown
+        run: cargo check --package pandaspy-proto --target wasm32-unknown-unknown --locked
 
   rules:
     name: Repository rules (cfg leak, locale parity)

@@ -1,9 +1,9 @@
-# Spool
+# PandaSpy
 
 A cross-platform desktop tray application that monitors Bambu Lab 3D printers
 over the local network.
 
-Spool lives in the menu bar / system tray, discovers printers on your LAN, and
+PandaSpy lives in the menu bar / system tray, discovers printers on your LAN, and
 shows print progress, temperatures and errors without a cloud round-trip.
 
 > **Status: scaffolding.** The repository currently builds an empty shell on
@@ -45,5 +45,5 @@ CI. Scopes map to crate names; see CLAUDE.md § Commit conventions.
 
 MIT — see [LICENSE](LICENSE).
 
-Spool is an independent project. It is not affiliated with, endorsed by, or
+PandaSpy is an independent project. It is not affiliated with, endorsed by, or
 supported by Bambu Lab.

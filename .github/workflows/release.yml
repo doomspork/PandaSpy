@@ -62,8 +62,8 @@ jobs:
       # Build the tagged commit, not whatever main has drifted to since.
       ref: ${{ needs.resolve.outputs.tag }}
       # latest.json needs signed bundles. Set the repository variable
-      # SPOOL_UPDATER_ENABLED to "true" once TAURI_SIGNING_PRIVATE_KEY exists
+      # PANDASPY_UPDATER_ENABLED to "true" once TAURI_SIGNING_PRIVATE_KEY exists
       # and tauri.conf.json has a `plugins.updater` public key — no workflow
       # edit required.
-      updater-json: ${{ vars.SPOOL_UPDATER_ENABLED == 'true' }}
+      updater-json: ${{ vars.PANDASPY_UPDATER_ENABLED == 'true' }}
     secrets: inherit

@@ -1,6 +1,6 @@
 # Fixtures
 
-Recorded printer payloads. This corpus is the reason Spool can be one codebase
+Recorded printer payloads. This corpus is the reason PandaSpy can be one codebase
 instead of three.
 
 ## Why this directory exists
@@ -19,7 +19,7 @@ code running against the same bytes in the same test.
 
 ```
 fixtures/
-  reports/     MQTT report payloads   -> crates/bambu-proto/tests/golden.rs
+  reports/     MQTT report payloads   -> crates/pandaspy-proto/tests/golden.rs
 ```
 
 Add a subdirectory when you add a payload category (requests, SSDP

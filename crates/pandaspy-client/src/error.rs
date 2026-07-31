@@ -20,7 +20,7 @@ pub enum ClientError {
     #[error("printer rejected the access code")]
     Unauthorised,
 
-    /// A payload arrived that `bambu-proto` could not use.
+    /// A payload arrived that `pandaspy-proto` could not use.
     #[error(transparent)]
-    Protocol(#[from] bambu_proto::ProtoError),
+    Protocol(#[from] pandaspy_proto::ProtoError),
 }

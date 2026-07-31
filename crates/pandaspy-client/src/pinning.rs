@@ -10,7 +10,7 @@
 
 use std::fmt;
 
-use bambu_proto::DeviceSerial;
+use pandaspy_proto::DeviceSerial;
 
 /// SHA-256 of the printer's DER-encoded leaf certificate.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -56,7 +56,7 @@ pub enum TrustDecision {
 /// the connect path, and making it `async` would force a runtime into code that
 /// does not otherwise need one.
 ///
-/// The persistent implementation lives in `bambu-store`, which is the crate
+/// The persistent implementation lives in `pandaspy-store`, which is the crate
 /// allowed to know what a keychain is.
 pub trait PinStore: Send + Sync + fmt::Debug {
     /// The fingerprint pinned for this printer, if any.

@@ -7,13 +7,13 @@
 //! # Trust
 //!
 //! Printers serve a self-signed certificate. There is no CA to check against,
-//! so Spool uses trust-on-first-use: remember the fingerprint the first time,
+//! so PandaSpy uses trust-on-first-use: remember the fingerprint the first time,
 //! and treat a change as a hard stop that the user must approve. See
 //! [`pinning`].
 //!
 //! # What does not live here
 //!
-//! Payload parsing — that is [`bambu_proto`]. This crate moves bytes and
+//! Payload parsing — that is [`pandaspy_proto`]. This crate moves bytes and
 //! manages a connection's lifecycle; it does not know what a nozzle is.
 
 mod backoff;

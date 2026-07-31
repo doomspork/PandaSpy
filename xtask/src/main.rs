@@ -39,7 +39,7 @@ fn print_help() {
 cargo xtask <subcommand>
 
   locale-check   Every locale defines exactly the keys en-US defines
-  cfg-check      Platform-conditional code stays in src-tauri/ and bambu-store/
+  cfg-check      Platform-conditional code stays in src-tauri/ and pandaspy-store/
   check          The full pre-push gate: fmt, clippy, tests, both checks above,
                  and the frontend lint + typecheck if pnpm is installed
   help           This message
@@ -104,13 +104,13 @@ fn check_all() -> Result<()> {
     ])?;
     cargo(&["test", "--workspace"])?;
 
-    // `bambu-proto` must stay free of I/O. wasm is a target where I/O does not
+    // `pandaspy-proto` must stay free of I/O. wasm is a target where I/O does not
     // exist, so this failing is the earliest possible warning that something
     // impure has crept in.
     cargo(&[
         "check",
         "--package",
-        "bambu-proto",
+        "pandaspy-proto",
         "--target",
         "wasm32-unknown-unknown",
     ])?;

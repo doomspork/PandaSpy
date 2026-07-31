@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn messages_terms_and_attributes_all_count_as_keys() {
         let extracted =
-            keys("-brand = Spool\ngreeting = Hello\n    .tooltip = A tooltip\nplain = Text\n");
+            keys("-brand = PandaSpy\ngreeting = Hello\n    .tooltip = A tooltip\nplain = Text\n");
 
         assert_eq!(
             extracted,

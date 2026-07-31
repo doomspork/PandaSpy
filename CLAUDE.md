@@ -2,7 +2,7 @@
 
 Guidance for Claude Code, and for anyone else picking this repository up cold.
 
-Spool is a cross-platform desktop tray application that monitors Bambu Lab 3D
+PandaSpy is a cross-platform desktop tray application that monitors Bambu Lab 3D
 printers over the local network. Rust + Tauri v2, targeting macOS (aarch64 and
 x86-64), Windows (x86-64) and Linux (x86-64).
 
@@ -15,7 +15,7 @@ or real UI is implemented. Placeholders are marked `TODO(scaffold)`.
 ## The one architectural rule
 
 > **Platform-conditional compilation is permitted only in `src-tauri/` and
-> `crates/bambu-store/`. Anywhere else, it means the design is wrong.**
+> `crates/pandaspy-store/`. Anywhere else, it means the design is wrong.**
 
 That covers `#[cfg(target_os)]`, `cfg!(target_os)`, `#[cfg(unix)]`,
 `#[cfg(windows)]`, `target_family`, `target_arch`, and
@@ -36,7 +36,7 @@ pinning, status parser and HMS resolver all exist twice, with no shared test
 corpus. A firmware change gets fixed in one and silently missed in the other.
 Nobody notices until a user does.
 
-Spool is not a fork or a port of that project — implement from protocol
+PandaSpy is not a fork or a port of that project — implement from protocol
 behaviour and public documentation only, never by translating its source. The
 layout here exists specifically to make that duplication structurally
 impossible. One protocol implementation, one fixture corpus, one test run that
@@ -50,7 +50,7 @@ reasonable at the time.
 
 Inject it, do not branch on it.
 
-`bambu-discovery` and `bambu-client` are already shaped for this: sockets sit
+`pandaspy-discovery` and `pandaspy-client` are already shaped for this: sockets sit
 behind `SsdpSocket` and `PortProbe`, and pins behind `PinStore`. `src-tauri`
 supplies the real implementations; tests supply fakes. If multicast needs
 different setup on Windows, that belongs in the Windows socket implementation
@@ -62,11 +62,11 @@ runtime. `xtask/src/main.rs` does exactly this to find pnpm, which is
 only rule-compliant, it is more correct — the right executable name depends on
 how pnpm was installed, not on what the binary was compiled for.
 
-`bambu-store` is the one exception because macOS Keychain, Windows Credential
+`pandaspy-store` is the one exception because macOS Keychain, Windows Credential
 Manager and Linux Secret Service are genuinely three different things, and no
 abstraction makes "Keychain" and "Credential Manager" the same word. Even there
 the allowance is narrow: it covers backend _selection_ and platform naming, not
-logic. See `crates/bambu-store/src/secrets.rs` for the shape.
+logic. See `crates/pandaspy-store/src/secrets.rs` for the shape.
 
 Adding a third entry to the allow-list is a design decision to argue about in a
 pull request, not a formality.
@@ -77,10 +77,10 @@ pull request, not a formality.
 
 ```
 crates/
-  bambu-proto/       pure: wire types, payload codec, state merge, HMS table
-  bambu-discovery/   SSDP + subnet probe, I/O behind traits
-  bambu-client/      TLS + MQTT session, TOFU pinning, reconnect/backoff
-  bambu-store/       config + secrets, behind swappable backends
+  pandaspy-proto/       pure: wire types, payload codec, state merge, HMS table
+  pandaspy-discovery/   SSDP + subnet probe, I/O behind traits
+  pandaspy-client/      TLS + MQTT session, TOFU pinning, reconnect/backoff
+  pandaspy-store/       config + secrets, behind swappable backends
 src-tauri/           thin: tray, window, commands, event bridge
 src/                 SvelteKit frontend
 locales/             Fluent .ftl, shared by Rust AND the frontend
@@ -88,7 +88,7 @@ fixtures/            recorded printer payloads (redacted) for golden tests
 xtask/               repo automation (sources; manifest is the repo root)
 ```
 
-### `bambu-proto` — pure
+### `pandaspy-proto` — pure
 
 No I/O, no async runtime, no clock, no randomness, no platform APIs. Given the
 same bytes it produces the same value on every platform, forever.
@@ -99,7 +99,7 @@ not exist. If that job fails, something impure got in. **Find it and move it —
 do not add a shim or a feature flag to make wasm happy.** The check has no value
 if it can be worked around.
 
-### `bambu-discovery` — finding printers
+### `pandaspy-discovery` — finding printers
 
 SSDP first, subnet probe as the fallback. Neither owns a socket; both are
 written against `SsdpSocket` and `PortProbe` so the algorithms can be tested
@@ -111,7 +111,7 @@ auto-traits unspecified, so callers cannot spawn the result on a multi-threaded
 runtime. The cost is that the traits are not `dyn`-safe, which is fine — there
 is one real implementation and one test double.
 
-### `bambu-client` — talking to a printer
+### `pandaspy-client` — talking to a printer
 
 Connection lifecycle, not payload semantics. It moves bytes and manages
 reconnects; it does not know what a nozzle is.
@@ -128,7 +128,7 @@ can tell them apart.
 makes a scheduler untestable, so the caller applies jitter to the returned
 `Duration`.
 
-### `bambu-store` — persistence
+### `pandaspy-store` — persistence
 
 Config and secrets are separate concerns and stay separate. Config is plain
 text on disk and safe to inspect; access codes go to the OS secret store. See
@@ -175,7 +175,7 @@ printer actually said.
 **`#[serde(deny_unknown_fields)]` is banned.** Use `#[serde(default)]` on the
 struct so missing keys deserialise to `None` rather than failing.
 
-The tests in `crates/bambu-proto/src/state.rs` pin all three behaviours. Adding
+The tests in `crates/pandaspy-proto/src/state.rs` pin all three behaviours. Adding
 a field means adding a case to `PrinterState::merge_from`, which destructures
 exhaustively on purpose: it will not compile until the new field is handled.
 
@@ -192,11 +192,11 @@ you cannot produce a payload that exhibits the behaviour, you do not yet
 understand the behaviour well enough to encode it. Reviewers should reject
 protocol changes that arrive without one.
 
-`crates/bambu-proto/tests/golden.rs` parses every file in `fixtures/reports/`
+`crates/pandaspy-proto/tests/golden.rs` parses every file in `fixtures/reports/`
 and snapshots the result with `insta`. Workflow:
 
 ```sh
-cargo test -p bambu-proto
+cargo test -p pandaspy-proto
 cargo insta review          # read the diff properly, then accept
 ```
 
@@ -245,9 +245,9 @@ Two things to know:
   ignored". Do not remove that line.
 - Both sides set `useIsolating(false)`. Fluent otherwise wraps placeables in
   invisible Unicode directional isolate marks, which break string comparison in
-  tests and menu items. Turn it back on when Spool ships an RTL locale.
+  tests and menu items. Turn it back on when PandaSpy ships an RTL locale.
 
-Proper nouns (`Spool`, `Keychain`, `Credential Manager`) are not translated.
+Proper nouns (`PandaSpy`, `Keychain`, `Credential Manager`) are not translated.
 Never assemble a sentence by concatenation — use Fluent selectors, because
 Polish plural rules cannot be expressed as `"Found " + n + " printers"`.
 
@@ -272,7 +272,7 @@ Individual pieces:
 cargo test --workspace
 cargo xtask locale-check
 cargo xtask cfg-check
-cargo check -p bambu-proto --target wasm32-unknown-unknown
+cargo check -p pandaspy-proto --target wasm32-unknown-unknown
 cargo deny check                 # needs `cargo install cargo-deny --locked`
 pnpm run check                   # prettier + eslint + svelte-check
 ```
@@ -339,10 +339,10 @@ Scopes map to crates:
 
 | Scope       | Covers                                |
 | ----------- | ------------------------------------- |
-| `proto`     | `crates/bambu-proto`                  |
-| `discovery` | `crates/bambu-discovery`              |
-| `client`    | `crates/bambu-client`                 |
-| `store`     | `crates/bambu-store`                  |
+| `proto`     | `crates/pandaspy-proto`               |
+| `discovery` | `crates/pandaspy-discovery`           |
+| `client`    | `crates/pandaspy-client`              |
+| `store`     | `crates/pandaspy-store`               |
 | `tauri`     | `src-tauri`                           |
 | `xtask`     | `xtask`                               |
 | `ui`        | the SvelteKit frontend                |
@@ -392,7 +392,7 @@ that work, and each one silently breaks it if changed:
 
 The package path in `release-please-config.json` is `"."`, not `"src-tauri"`,
 and that is not cosmetic. A non-root path makes Release Please filter commits by
-that path, so a `feat(proto):` commit touching only `crates/bambu-proto` would
+that path, so a `feat(proto):` commit touching only `crates/pandaspy-proto` would
 produce no release and no changelog entry. A non-root path also registers the
 lockfile updater at `<path>/Cargo.lock`, which does not exist in a workspace —
 so `Cargo.lock` would never be bumped and the next `cargo build --locked` would
@@ -464,7 +464,7 @@ on pull requests too.
 
 - **Mobile.** Desktop only. `cargo tauri icon` generates iOS and Android assets;
   they were deleted rather than committed.
-- **Cloud.** Spool talks to printers on the local network. No Bambu account, no
+- **Cloud.** PandaSpy talks to printers on the local network. No Bambu account, no
   Bambu Cloud API, no relay through anyone's servers.
 - **Forking or porting BambuBar.** Implement from protocol behaviour and public
   documentation. Do not translate its source.
@@ -487,10 +487,10 @@ Everything below is deliberate scaffolding debt, not oversight.
   `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and the
   Windows secrets. These are being provisioned separately.
 - **Updater is off.** `latest.json` generation is wired but gated behind the
-  repository variable `SPOOL_UPDATER_ENABLED`, because it needs signed bundles.
+  repository variable `PANDASPY_UPDATER_ENABLED`, because it needs signed bundles.
   Turning it on also needs a `plugins.updater` public key in `tauri.conf.json`.
 - **Confirm the bundle identifier before the first release.** It is currently
-  `io.github.seancallan.spool`. Changing it after a release breaks updates and
+  `io.github.seancallan.pandaspy`. Changing it after a release breaks updates and
   orphans user data on macOS.
 - **macOS tray icon should be a template image.** The colour app icon is used
   for now; it looks right on Windows and Linux but will not tint with the menu
@@ -503,7 +503,7 @@ Everything below is deliberate scaffolding debt, not oversight.
   SvelteKit emits an inline boot script. Tightening it means configuring
   SvelteKit's `kit.csp` hashes and reconciling them with Tauri's CSP. Worth
   doing before the app handles printer credentials.
-- **`bambu-proto`, `bambu-discovery` and `bambu-client` are not yet
+- **`pandaspy-proto`, `pandaspy-discovery` and `pandaspy-client` are not yet
   dependencies of `src-tauri`.** Add each in the commit that first wires it in,
   so `cargo deny` reviews its dependency tree in context.
 - **No TLS or MQTT dependency yet.** When adding one it must be `rustls`;

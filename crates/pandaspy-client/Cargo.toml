@@ -1,5 +1,5 @@
 [package]
-name         = "bambu-client"
+name         = "pandaspy-client"
 version      = "0.1.0"
 description  = "TLS + MQTT session with a Bambu Lab printer: TOFU pinning, reconnect, backoff."
 edition      = { workspace = true }
@@ -18,7 +18,7 @@ publish      = false
 # commit that first uses them so `cargo deny` reviews them in context.
 
 [dependencies]
-bambu-proto = { workspace = true }
+pandaspy-proto = { workspace = true }
 thiserror   = { workspace = true }
 
 [lints]

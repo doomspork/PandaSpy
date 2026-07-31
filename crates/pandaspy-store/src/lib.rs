@@ -1,4 +1,4 @@
-//! Where Spool keeps things between runs.
+//! Where PandaSpy keeps things between runs.
 //!
 //! Two separate concerns, deliberately not merged:
 //!

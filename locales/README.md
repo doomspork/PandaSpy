@@ -39,7 +39,7 @@ cargo xtask locale-check
 
 ## What does not belong here
 
-* Proper nouns (`Spool`, `Keychain`, `Credential Manager`). Translating a
+* Proper nouns (`PandaSpy`, `Keychain`, `Credential Manager`). Translating a
   product name makes an error message harder to act on.
 * Log messages and error strings that only developers read.
 * Anything assembled by string concatenation. Use Fluent placeables and

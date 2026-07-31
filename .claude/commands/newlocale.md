@@ -1,10 +1,10 @@
 ---
-description: Add a new language to Spool
+description: Add a new language to PandaSpy
 argument-hint: '<BCP-47 tag, e.g. de-DE>'
 allowed-tools: Bash(cargo:*), Bash(mkdir:*), Bash(cp:*), Read, Write, Edit
 ---
 
-Add the locale **$ARGUMENTS** to Spool.
+Add the locale **$ARGUMENTS** to PandaSpy.
 
 Adding a language requires adding files and nothing else. There is no list of
 supported languages in Rust, in TypeScript or in the build config — both sides
@@ -29,7 +29,7 @@ Leave message ids, term ids and attribute names exactly as they are.
 
 Things that stay untranslated:
 
-- `-brand-name = Spool`. It is a product name.
+- `-brand-name = PandaSpy`. It is a product name.
 - Anything in `hms.ftl` you cannot verify. A guessed translation of a printer
   error is worse than an English one, because the user will act on it.
 
@@ -57,7 +57,7 @@ That is visible in a diff and can be found later; a missing key is neither.
 ## 4. Verify both sides pick it up
 
 ```
-cargo test -p spool           # Rust: tray menu and notifications
+cargo test -p pandaspy           # Rust: tray menu and notifications
 pnpm run check                # frontend
 ```
 

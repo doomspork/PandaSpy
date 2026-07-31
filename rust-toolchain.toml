@@ -4,7 +4,7 @@
 channel    = "1.94.0"
 profile    = "minimal"
 components = ["rustfmt", "clippy"]
-# `bambu-proto` must stay free of I/O and platform APIs. The cheapest structural
+# `pandaspy-proto` must stay free of I/O and platform APIs. The cheapest structural
 # proof of that is that it compiles to wasm; CI runs
-# `cargo check -p bambu-proto --target wasm32-unknown-unknown`.
+# `cargo check -p pandaspy-proto --target wasm32-unknown-unknown`.
 targets    = ["wasm32-unknown-unknown"]

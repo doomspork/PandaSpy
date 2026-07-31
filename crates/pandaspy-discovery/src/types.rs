@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use bambu_proto::{DeviceSerial, PrinterModel};
+use pandaspy_proto::{DeviceSerial, PrinterModel};
 
 /// How a printer came to our attention.
 ///
@@ -18,9 +18,9 @@ pub enum DiscoverySource {
 /// A printer we believe exists at an address.
 ///
 /// Discovery is deliberately shallow: it answers "what is out there", not "what
-/// is it doing". Everything past this point is [`bambu_client`]'s job.
+/// is it doing". Everything past this point is [`pandaspy_client`]'s job.
 ///
-/// [`bambu_client`]: https://docs.rs/bambu-client
+/// [`pandaspy_client`]: https://docs.rs/pandaspy-client
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct DiscoveredPrinter {

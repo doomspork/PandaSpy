@@ -2,14 +2,14 @@
 // window behind the app. Debug builds keep the console so `println!` works.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-//! Spool — the platform layer.
+//! PandaSpy — the platform layer.
 //!
 //! Deliberately thin. This crate owns the tray, the window, the Tauri commands
 //! and the event bridge, and nothing else. Protocol parsing lives in
-//! `bambu-proto`, finding printers in `bambu-discovery`, connections in
-//! `bambu-client`, and persistence in `bambu-store`.
+//! `pandaspy-proto`, finding printers in `pandaspy-discovery`, connections in
+//! `pandaspy-client`, and persistence in `pandaspy-store`.
 //!
-//! Together with `bambu-store` this is one of the two places in the repository
+//! Together with `pandaspy-store` this is one of the two places in the repository
 //! permitted to use `#[cfg(target_os)]`. See `CLAUDE.md`.
 
 mod i18n;
@@ -43,7 +43,7 @@ fn diagnostics(localiser: State<'_, Localiser>) -> Diagnostics {
         version: env!("CARGO_PKG_VERSION"),
         active_locale: localiser.active().to_owned(),
         available_locales: localiser.available(),
-        secret_backend: bambu_store::os_keyring_name(),
+        secret_backend: pandaspy_store::os_keyring_name(),
     }
 }
 
@@ -52,7 +52,7 @@ fn main() {
 
     // `sys_locale` reads whatever the OS considers the user's preference. It is
     // the only thing we know at startup; a user override from the stored config
-    // is applied later, once `bambu-store` can read it.
+    // is applied later, once `pandaspy-store` can read it.
     let preferences: Vec<String> = sys_locale::get_locales().collect();
     let chosen = localiser.negotiate(&preferences);
     localiser.set_active(&chosen);
@@ -69,5 +69,5 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("failed to start Spool");
+        .expect("failed to start PandaSpy");
 }

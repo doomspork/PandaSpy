@@ -1,5 +1,5 @@
 [package]
-name         = "spool"
+name         = "pandaspy"
 version      = "0.1.0"
 description  = "Monitor Bambu Lab 3D printers from the menu bar."
 edition      = { workspace = true }
@@ -19,7 +19,7 @@ publish      = false
 # the wrong crate.
 #
 # This is one of exactly TWO places `#[cfg(target_os)]` is permitted; the other
-# is `crates/bambu-store`. See CLAUDE.md § The one architectural rule.
+# is `crates/pandaspy-store`. See CLAUDE.md § The one architectural rule.
 #
 # NOTE: the app version lives HERE and only here. `tauri.conf.json` has no
 # `version` key and inherits this one; the root `package.json` has none either.
@@ -28,9 +28,9 @@ publish      = false
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
-bambu-store = { workspace = true }
+pandaspy-store = { workspace = true }
 
-# TODO(scaffold): bambu-proto, bambu-discovery and bambu-client get added in the
+# TODO(scaffold): pandaspy-proto, pandaspy-discovery and pandaspy-client get added in the
 # commits that first wire them in, so `cargo deny` reviews their dependency
 # trees in the context of the change that needs them.
 

@@ -1,5 +1,5 @@
 /**
- * Frontend half of Spool's internationalisation.
+ * Frontend half of PandaSpy's internationalisation.
  *
  * The Rust half (`src-tauri/src/i18n.rs`) reads the very same `.ftl` files from
  * `locales/`. There is no duplicated string table and no build step that copies
@@ -42,7 +42,7 @@ function buildBundles(): Map<string, FluentBundle> {
 			// `useIsolating` inserts Unicode directional isolate marks around
 			// placeables. Correct for bidirectional text, but it puts invisible
 			// characters into strings that tests and `===` comparisons then trip
-			// over. Turn it back on when Spool ships an RTL locale.
+			// over. Turn it back on when PandaSpy ships an RTL locale.
 			bundle = new FluentBundle(tag, { useIsolating: false });
 			bundles.set(tag, bundle);
 		}

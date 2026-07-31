@@ -8,7 +8,7 @@
 //! To add a fixture, use `/fixture` (see `.claude/commands/fixture.md`).
 //! To review snapshot changes: `cargo insta review`.
 
-use bambu_proto::PrinterState;
+use pandaspy_proto::PrinterState;
 
 #[test]
 fn every_report_fixture_parses_and_matches_its_snapshot() {

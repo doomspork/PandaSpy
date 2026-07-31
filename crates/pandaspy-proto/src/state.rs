@@ -57,7 +57,7 @@ impl From<JobStage> for String {
     }
 }
 
-/// Everything Spool knows about one printer at one instant.
+/// Everything PandaSpy knows about one printer at one instant.
 ///
 /// # Why every field is `Option`
 ///

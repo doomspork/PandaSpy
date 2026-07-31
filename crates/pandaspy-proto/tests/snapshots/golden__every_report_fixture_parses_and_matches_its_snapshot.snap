@@ -1,5 +1,5 @@
 ---
-source: crates/bambu-proto/tests/golden.rs
+source: crates/pandaspy-proto/tests/golden.rs
 expression: state
 input_file: fixtures/reports/scaffold-minimal.json
 ---
