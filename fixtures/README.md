@@ -19,11 +19,30 @@ code running against the same bytes in the same test.
 
 ```
 fixtures/
-  reports/     MQTT report payloads   -> crates/pandaspy-proto/tests/golden.rs
+  reports/     single MQTT report messages    -> crates/pandaspy-proto/tests/golden.rs
+  sequences/   pushall + deltas, in order     -> crates/pandaspy-proto/tests/sequence.rs
 ```
+
+Files are complete wire payloads — the full `{"print": {...}}` /
+`{"info": {...}}` envelope exactly as it left the printer, not excerpts.
+
+A **sequence** is a directory of numbered messages (`00-pushall.json`,
+`01-delta-….json`, …) replayed in filename order. The sequence tests are the
+regression guard for the state merge: a bug where a delta silently discards
+snapshot state shows up here and nowhere else. A new merge edge case gets a
+new sequence, not just a unit test.
 
 Add a subdirectory when you add a payload category (requests, SSDP
 announcements, HMS bursts), and a golden test alongside it.
+
+## Synthetic fixtures
+
+Everything currently in the corpus is prefixed `synthetic-`: assembled from
+community protocol documentation to cover the model matrix before real
+captures exist. They are honest about what they are — the prefix is the
+provenance marker. When a real capture of the same situation arrives, the
+synthetic file is deleted, not kept alongside; a corpus that mixes
+recordings with reconstructions is worse than one that is honestly partial.
 
 ## The rule
 
@@ -44,7 +63,8 @@ Use `/fixture`, which walks through it. The short version:
 2. Redact it (below).
 3. Save as `fixtures/reports/<model>-<situation>.json`, e.g.
    `p1s-mid-print-with-ams.json`. The filename should say what makes this
-   payload worth keeping.
+   payload worth keeping. If it replaces a `synthetic-*` file covering the
+   same situation, delete the synthetic one in the same commit.
 4. `cargo insta review` to accept the new snapshot, then commit fixture and
    snapshot together.
 

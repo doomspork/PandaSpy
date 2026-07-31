@@ -6,9 +6,13 @@ PandaSpy is a cross-platform desktop tray application that monitors Bambu Lab 3D
 printers over the local network. Rust + Tauri v2, targeting macOS (aarch64 and
 x86-64), Windows (x86-64) and Linux (x86-64).
 
-**Current state: scaffolding.** The repository builds an empty shell on all
-three platforms and has working CI. No printer protocol, discovery, connection
-or real UI is implemented. Placeholders are marked `TODO(scaffold)`.
+**Current state: M1 (protocol core) complete.** `pandaspy-proto` implements
+the wire contract, the state merge, the AMS model and HMS resolution, tested
+against a synthetic fixture corpus (real captures pending — see
+`fixtures/README.md`). Discovery, the client, persistence and the real UI are
+not implemented; those placeholders are marked `TODO(scaffold)`. Protocol
+facts asserted from community documentation rather than a capture are marked
+`TODO(fixture)`.
 
 ---
 
@@ -77,7 +81,7 @@ pull request, not a formality.
 
 ```
 crates/
-  pandaspy-proto/       pure: wire types, payload codec, state merge, HMS table
+  pandaspy-proto/       pure: wire contract, report accumulator, AMS + HMS model
   pandaspy-discovery/   SSDP + subnet probe, I/O behind traits
   pandaspy-client/      TLS + MQTT session, TOFU pinning, reconnect/backoff
   pandaspy-store/       config + secrets, behind swappable backends
@@ -98,6 +102,18 @@ This is enforced structurally, not by review: CI builds the crate for
 not exist. If that job fails, something impure got in. **Find it and move it —
 do not add a shim or a feature flag to make wasm happy.** The check has no value
 if it can be worked around.
+
+Purity has API consequences worth knowing before you reach for a clock:
+`PrinterState::eta(now)` takes the current time as a parameter, and the two
+HMS/error text tables are snapshots of Bambu's public table embedded at
+compile time (`assets/hms/*.json`) — resolution never touches the network.
+That last part is a privacy commitment, not an optimisation: PandaSpy speaks
+to printers on the LAN and to nothing else.
+
+The crate is read-only by construction. `wire::Request` can express exactly
+two commands — `pushall` and `get_version` — so print control cannot be sent
+by accident from anywhere in the app. Widening that enum is a product
+decision, not a refactor.
 
 ### `pandaspy-discovery` — finding printers
 
@@ -175,9 +191,30 @@ printer actually said.
 **`#[serde(deny_unknown_fields)]` is banned.** Use `#[serde(default)]` on the
 struct so missing keys deserialise to `None` rather than failing.
 
-The tests in `crates/pandaspy-proto/src/state.rs` pin all three behaviours. Adding
-a field means adding a case to `PrinterState::merge_from`, which destructures
-exhaustively on purpose: it will not compile until the new field is handled.
+Two implementation consequences in `pandaspy-proto`:
+
+**Scalars are parsed leniently** (`src/de.rs`). The same field arrives as
+`28.5`, `"28.5"` or `""` depending on model and firmware; ids are strings on
+X1-era firmware and integers on A1-era; bitmasks are hex strings. An
+unreadable scalar becomes `None`, never a parse failure.
+
+**The merge is defined over JSON documents, not typed structs**
+(`src/merge.rs`). The printer sends one `pushall` snapshot, then sparse
+deltas. Reports deep-merge into an accumulated document
+(`StateAccumulator`), and the typed `PrinterState` is deserialised as a
+_view_ of that document. Absent keys mean "unchanged"; a present `null`
+clears; objects recurse; arrays replace wholesale. This is what makes the
+"absent ≠ null" distinction real, and it means fields the typed view does
+not model yet still accumulate faithfully (visible via
+`StateAccumulator::document()`).
+
+The tests in `src/state.rs`, `src/de.rs` and `src/merge.rs` pin these
+behaviours; `tests/sequence.rs` replays pushall + delta conversations from
+`fixtures/sequences/` and is the regression guard for the merge.
+
+One connection-layer contract: deltas lost while disconnected are
+unrecoverable, so the client must `StateAccumulator::reset()` on reconnect
+and request a fresh `pushall`.
 
 ---
 
@@ -213,9 +250,19 @@ Redaction rules — serials, access codes, SSIDs, addresses — are in
 forever; a fixture committed with a live access code means rotating that
 printer's credentials. Use `/fixture` for the guided version.
 
-`fixtures/reports/scaffold-minimal.json` is a placeholder, not a recording. Its
-field names match the placeholder `PrinterState`, not the wire format. Delete
-it once real fixtures exist.
+Two fixture categories exist today:
+
+- `fixtures/reports/*.json` — single report-topic messages, in real wire
+  format (`{"print": {...}}` envelopes), golden-tested by `tests/golden.rs`.
+- `fixtures/sequences/<name>/NN-*.json` — a pushall followed by deltas,
+  replayed in filename order by `tests/sequence.rs`. Merge edge cases get a
+  new sequence, not just a unit test.
+
+Every current fixture is **synthetic** (prefixed `synthetic-`), assembled
+from community protocol documentation to exercise the model matrix until
+real captures arrive. When a real capture of the same situation lands,
+delete the synthetic file rather than keeping both — a fixture corpus that
+mixes recordings with guesses is worse than one that is honestly partial.
 
 ---
 
@@ -457,24 +504,28 @@ on pull requests too.
 
 ## Non-goals
 
-> **Note:** the brief for this session said the non-goals would be supplied in a
-> follow-up prompt that never arrived. What follows is inferred from the brief
-> itself and should be reviewed, corrected and extended by the maintainer.
-> Treat it as provisional.
+The maintainer's list for the MVP. Do not build these:
 
-- **Mobile.** Desktop only. `cargo tauri icon` generates iOS and Android assets;
-  they were deleted rather than committed.
-- **Cloud.** PandaSpy talks to printers on the local network. No Bambu account, no
-  Bambu Cloud API, no relay through anyone's servers.
-- **Forking or porting BambuBar.** Implement from protocol behaviour and public
-  documentation. Do not translate its source.
+- **Print control of any kind — pause, resume, stop.** Deliberately excluded:
+  an accidental click in a tray popover killing a 14-hour print is a bad
+  first impression. Read-only for v1. The protocol layer enforces this
+  structurally — see `wire::Request`.
+- **Camera / RTSP streaming.**
+- **FTPS file browsing or gcode upload.**
+- **Bambu Cloud accounts.** PandaSpy talks to printers on the local network.
+  No relay through anyone's servers.
+- **Mobile.** Desktop only. `cargo tauri icon` generates iOS and Android
+  assets; they were deleted rather than committed.
+- **AMS filament editing.** Display only.
+- **Multi-user.**
+- **Forking or porting BambuBar.** Implement from protocol behaviour and
+  public documentation. Do not translate its source.
 - **Per-platform codebases or per-platform behaviour.** See the architectural
-  rule. One implementation, one corpus.
-- **Controlling printers.** Monitoring is the product. Anything that starts,
-  stops or modifies a print is a separate decision with different safety
-  implications, and is not in scope by default.
-- **Slicing, model management, or a print queue.** Other tools do these well.
-- **Telemetry or analytics of any kind.**
+  rule. One implementation, one corpus. (The tray/popover presentation does
+  differ per platform by design — that is `src-tauri`'s job and stays there.)
+- **Telemetry, analytics or crash reporting of any kind.** The only network
+  peers PandaSpy will ever have are printers on the LAN and the GitHub
+  Releases update check. This is a stated privacy property, not a default.
 
 ---
 
