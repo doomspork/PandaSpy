@@ -6,14 +6,21 @@ PandaSpy is a cross-platform desktop tray application that monitors Bambu Lab 3D
 printers over the local network. Rust + Tauri v2, targeting macOS (aarch64 and
 x86-64), Windows (x86-64) and Linux (x86-64).
 
-**Current state: M2 (discovery) complete.** `pandaspy-proto` implements the
-wire contract, the state merge, the AMS model and HMS resolution;
-`pandaspy-discovery` implements multi-interface SSDP, the subnet-probe
-fallback and structured zero-result diagnostics. Both are tested against a
-synthetic fixture corpus (real captures pending — see `fixtures/README.md`).
-The client, persistence and the real UI are not implemented; those
-placeholders are marked `TODO(scaffold)`. Protocol facts asserted from
-community documentation rather than a capture are marked `TODO(fixture)`.
+**Current state: M2–M5 domain + shell complete; the UI and the integration
+that wires them together are not.** `pandaspy-proto` (wire contract, state
+merge, AMS, HMS), `pandaspy-discovery` (multi-interface SSDP, subnet probe,
+diagnostics), `pandaspy-client` (hand-rolled MQTT over TLS, TOFU pinning,
+reconnect supervisor with an explicit state machine), and `pandaspy-store`
+(config, keyring secrets + encrypted-file fallback, cert-pin persistence) are
+all implemented and tested. `src-tauri` has the platform shell (tray,
+per-platform popover, plugins, `NSLocalNetworkUsageDescription`).
+
+What is NOT done: the real frontend UI, and the **integration** that injects
+the domain crates into `src-tauri` and bridges printer state to the window.
+The domain crates are not yet dependencies of `src-tauri`; the seam is marked
+`TODO(scaffold)` in `src-tauri/src/main.rs`. Fixtures are synthetic pending
+real captures (`fixtures/README.md`); community-sourced protocol facts are
+marked `TODO(fixture)`.
 
 ---
 
@@ -165,24 +172,50 @@ scripted fakes.
 Connection lifecycle, not payload semantics. It moves bytes and manages
 reconnects; it does not know what a nozzle is.
 
-Trust is on-first-use, because printers serve a self-signed certificate
-generated on the device. There is no chain to validate, so ordinary TLS
-verification either rejects every printer or accepts every impostor. Instead:
-record the fingerprint the first time, require it to match forever after, and
-surface a change to the user as a decision rather than retrying it. A firmware
-reflash and an attacker look identical from inside the process; only the user
-can tell them apart.
+MQTT is **hand-rolled** (`mqtt.rs`), not rumqttc: a read-only monitor needs a
+tiny subset, and rumqttc drags in aws-lc-rs, the system trust store, and a
+`rustls-webpki` carrying a live advisory. The codec is pure; the session loop
+is generic over its stream, so both are tested over an in-memory duplex.
 
-`Backoff` is deliberately jitter-free. Jitter needs randomness and randomness
-makes a scheduler untestable, so the caller applies jitter to the returned
-`Duration`.
+Trust is on-first-use, because printers serve a self-signed certificate
+generated on the device. There is no chain to validate, so `verify_server_cert`
+accepts any chain — **but the handshake signature is still verified** (it
+delegates to rustls's own `verify_tls1x_signature`). That distinction is
+load-bearing: a certificate is public, so a fingerprint pin proves only the
+bytes; the signature proves the peer holds the private key. Pin + signature
+together are what identify the real printer. Record the fingerprint on first
+sight, require it to match forever after, and surface a change as a user
+decision, never a silent re-pin — a reflash and an attacker look identical from
+inside the process.
+
+The session is an explicit state machine (`Disconnected` / `Connecting` /
+`Handshaking` / `Connected` / `Failed(reason)`), surfaced as events so the UI
+can tell a wrong access code from an unreachable printer. Reads run on a
+dedicated task feeding a channel because `read_packet` is not cancel-safe —
+cancelling it mid-packet in the `select!` would desynchronise the stream. The
+supervisor reconnects with `Backoff` (jitter-free, so its values are testable)
+plus an injected `Jitter`, resets the curve only after a session stayed healthy
+(never on a bare connect, or a flapping printer is hammered at the base rate),
+and never auto-retries a wrong access code or a changed certificate. One
+supervisor per printer; nothing shared, so one failure cannot stall the rest.
 
 ### `pandaspy-store` — persistence
 
-Config and secrets are separate concerns and stay separate. Config is plain
-text on disk and safe to inspect; access codes go to the OS secret store. See
-the test `printer_entries_never_carry_the_access_code`, which guards that by
-construction.
+Config, secrets and pins are separate concerns and stay separate. Config is
+plain text on disk and safe to inspect; access codes go to the OS secret store
+(`KeyringSecrets`) or, where none is reachable, an encrypted file
+(`EncryptedFileSecrets`: Argon2id over caller-injected machine key material +
+ChaCha20-Poly1305, whose weaker guarantee is documented in the module and must
+be surfaced in the UI). The test `printer_entries_never_carry_the_access_code`
+guards the config/secret split by construction. Every store takes its path by
+injection so `src-tauri` owns the platform's directory conventions.
+
+Two decisions worth knowing: the keyring backend is chosen at **runtime**
+(`keyring_available()` probes a sentinel read), never by `cfg` — the only
+`cfg` allowance is the per-target `keyring` feature tables in `Cargo.toml`. And
+`CertPinStore` is deliberately decoupled from `pandaspy-client`: it stores a
+plain `[u8; 32]`, and the adapter to the client's `PinStore` trait lives in
+`src-tauri`, which is the layer allowed to know about both.
 
 ### `src-tauri` — the platform layer
 
@@ -587,9 +620,15 @@ Everything below is deliberate scaffolding debt, not oversight.
   SvelteKit emits an inline boot script. Tightening it means configuring
   SvelteKit's `kit.csp` hashes and reconciling them with Tauri's CSP. Worth
   doing before the app handles printer credentials.
-- **`pandaspy-proto`, `pandaspy-discovery` and `pandaspy-client` are not yet
-  dependencies of `src-tauri`.** Add each in the commit that first wires it in,
-  so `cargo deny` reviews its dependency tree in context.
+- **The domain crates are not yet dependencies of `src-tauri`.** The
+  integration milestone wires them in: inject `TlsTransport` +
+  `pandaspy-store`'s stores into the client supervisor, adapt `CertPinStore`
+  to the client's `PinStore` trait (the adapter belongs in `src-tauri`),
+  source the machine key material for `EncryptedFileSecrets`, and bridge
+  `SessionEvent`/discovery results to the frontend via Tauri events (the seam
+  is marked `TODO(scaffold)` in `src-tauri/src/main.rs`). Add each crate in
+  the commit that first wires it in, so `cargo deny` reviews its tree in
+  context.
 - **`cargo deny` MUST be run with `--workspace`.** The repo root is a real
   package (`xtask`), not a virtual manifest, so a bare `cargo deny check`
   takes `xtask` as the sole graph root and silently audits ~26 crates —
@@ -603,17 +642,33 @@ Everything below is deliberate scaffolding debt, not oversight.
   list on any Tauri version bump — an ignore that outlives its cause is a
   silenced alarm, and cargo-deny flags a stale entry as
   `advisory-not-detected` (a warning, so read the warnings after a bump).
-- **No MQTT dependency yet.** TLS arrived with M2 and it is `rustls` with the
-  **ring** provider on purpose — one crypto stack, no cmake/nasm build
-  dependency, and `deny.toml` denies `openssl-sys` and `native-tls` outright,
-  because a system trust store means three different certificate behaviours
-  on three platforms. When M3 adds an MQTT client it must sit on the same
-  rustls configuration. The certificate-verification-disabling verifier in
-  `pandaspy-discovery::net` is for _reading_ a printer's identity during
-  discovery only; the MQTT path gets TOFU pinning, never that verifier.
+- **TLS is `rustls` with the ring provider, everywhere, and MQTT is
+  hand-rolled on top of it** — no rumqttc (aws-lc-rs, native certs, a
+  vulnerable webpki). `deny.toml` denies `openssl-sys` and `native-tls`
+  outright, because a system trust store means three certificate behaviours on
+  three platforms. Two verifiers accept any _chain_ (printers are
+  self-signed): `pandaspy-discovery::net`'s reads a serial and sends nothing,
+  and `pandaspy-client`'s gates the access code behind a fingerprint pin —
+  **and both must still verify the handshake signature** (the client's does;
+  a stubbed one there was the M3 review's critical finding). Never reuse
+  either verifier in code that would send credentials without a pin check.
 - **The macOS Local Network permission symptom is a heuristic.**
   `DiscoveryVerdict::PermissionDenied` treats all-sends-failing with
-  `HostUnreachable` as denial (plus real `PermissionDenied` kinds). Verify
-  the exact symptom from a bundled build in M5, when
-  `NSLocalNetworkUsageDescription` is wired into Info.plist — it is marked
+  `HostUnreachable` as denial (plus real `PermissionDenied` kinds).
+  `NSLocalNetworkUsageDescription` is now in `src-tauri/Info.plist`, but the
+  key merges at _bundle_ time — so verify the actual prompt and the exact
+  denial symptom from a real `.app`, not from `tauri dev`. Marked
   `TODO(fixture)` in `diag.rs`.
+- **The Windows and Linux tray/popover branches are not compiled on the dev
+  host.** `src-tauri/src/tray.rs` uses `cfg(target_os)` for genuinely
+  different presentation per platform; only the macOS branch was built
+  locally. The CI matrix compiles the others — treat a first Windows/Linux
+  build as unverified until it goes green, and the Windows popover anchor as
+  needing tuning on real hardware (marked `TODO(scaffold)`).
+- **The encrypted-file secret fallback needs `src-tauri` to do two things.**
+  Create the config directory `0600` (the "other local users" guarantee is
+  conditional on it — `pandaspy-store` cannot `chmod` portably without a
+  `cfg`), and supply stable machine key material to
+  `EncryptedFileSecrets::new`. Its threat model (raises the bar to
+  same-user-code, no further) is documented in `encrypted.rs` and seeds
+  SECURITY.md for M10.
