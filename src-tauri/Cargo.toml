@@ -40,6 +40,18 @@ serde         = { workspace = true }
 serde_json    = { workspace = true }
 sys-locale    = "0.3.2"
 tauri         = { version = "2.11.5", features = ["tray-icon"] }
+
+# Platform-shell plugins. All desktop-only; none pulls a domain crate in.
+#   single-instance  a second launch focuses the running window, not a duplicate
+#   positioner       anchors the popover to the tray icon (needs `tray-icon` to
+#                    expose the Tray* positions and the `on_tray_event` hook)
+#   autostart        launch-at-login, toggled from settings, DEFAULT OFF
+#   notification     OS notifications; raised from Rust in a later milestone
+tauri-plugin-autostart       = "2.5.1"
+tauri-plugin-notification    = "2.3.3"
+tauri-plugin-positioner      = { version = "2.3.3", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2.4.3"
+
 unic-langid   = { workspace = true }
 
 [lints]

@@ -17,6 +17,7 @@ mod tray;
 
 use serde::Serialize;
 use tauri::{Manager, State};
+use tauri_plugin_autostart::MacosLauncher;
 
 use crate::i18n::Localiser;
 
@@ -58,14 +59,62 @@ fn main() {
     localiser.set_active(&chosen);
 
     tauri::Builder::default()
+        // single-instance MUST be registered first: it decides whether this
+        // process is the primary one before any other plugin or window spins
+        // up. A second launch focuses the window we already have rather than
+        // spawning a duplicate tray icon and a second set of printer sessions.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            tray::reveal(app);
+        }))
+        // positioner anchors the popover to the tray icon. It has to see the
+        // tray events (forwarded in `tray.rs`) to know where the icon is, so it
+        // must be attached even though we drive it entirely from Rust.
+        .plugin(tauri_plugin_positioner::init())
+        // Launch-at-login. Registered so the settings UI can toggle it, but
+        // DEFAULT OFF: we never call `enable()` here — see the setup hook.
+        // `LaunchAgent` is the modern, sandbox-friendly macOS mechanism; the
+        // `None` is "no extra args on autostart".
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
+        // OS notifications (print finished, printer error). Initialised now; the
+        // code that raises them lands with the printer session, from Rust.
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![diagnostics])
         .setup(move |app| {
-            // Managed, not dropped: the handle is how the tray menu gets
-            // rebuilt when the user changes language, and how the icon gets
-            // swapped to reflect print state.
+            // A menu-bar app has no Dock presence — no Dock icon, no
+            // app-switcher entry. Without this the scaffold bounces into the
+            // Dock like an ordinary window app. macOS-only because the concept
+            // does not exist elsewhere; this is a genuine per-platform branch,
+            // which is exactly what src-tauri is allowed to have.
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            // Shape the one window for this platform: a borderless popover on
+            // macOS/Windows, a normal centred window on Linux. `tray.rs` owns
+            // the reasoning for why Linux differs.
+            tray::configure_window(app);
+
+            // NB: autostart stays OFF. We register the plugin (above) so the
+            // settings UI can flip it via `autostart:default`, but we never
+            // call `app.autolaunch().enable()` — opting in is the user's choice.
+
+            // Managed, not dropped: the handle is how the tray menu gets rebuilt
+            // when the user changes language, and how the icon gets swapped to
+            // reflect print state.
             let tray = tray::install(app, &localiser)?;
             app.manage(tray);
             app.manage(localiser);
+
+            // TODO(scaffold): the Rust -> frontend event bridge. Rust owns ALL
+            // printer state — discovery (`pandaspy-discovery`), the connection
+            // (`pandaspy-client`) and the parsed status (`pandaspy-proto`) live
+            // here, behind this process. As state changes, push it to the
+            // frontend with `app.emit("printer://update", &state)` (a Tauri
+            // event); the window renders what it is told and NEVER opens a
+            // socket to a printer itself. Wire this in the integration milestone
+            // once the client feeds parsed state in.
             Ok(())
         })
         .run(tauri::generate_context!())

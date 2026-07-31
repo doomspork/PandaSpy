@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS Info.plist additions, merged into the generated one by Tauri.
+
+  Referenced explicitly from tauri.conf.json (bundle.macOS.infoPlist =
+  "Info.plist"); Tauri also auto-discovers a file of this name next to the
+  config, but naming it in the config makes the dependency obvious. Confirmed
+  supported on Tauri v2 (2.11.x): `infoPlist` is a PATH to a plist to merge —
+  there is no way to inline plist keys in tauri.conf.json.
+
+  Caveat: the merge happens at BUNDLE time (`tauri build`). `tauri dev` runs the
+  bare binary, so the Local Network prompt there behaves differently — verify
+  the permission from an actual .app bundle. This matches the M5 note in
+  CLAUDE.md and the TODO(fixture) in pandaspy-discovery::diag.
+-->
+<plist version="1.0">
+  <dict>
+    <!--
+      macOS 14+ gates ALL local-network traffic behind an explicit user grant:
+      the multicast SSDP discovery (239.255.255.250:2021), the subnet-probe
+      fallback, and the eventual MQTT/TLS connection to a printer. Without this
+      key the OS denies that traffic SILENTLY — sockets open and multicast joins
+      succeed, but sends die with "no route to host" and discovery returns
+      nothing, with no error to surface. pandaspy-discovery's diagnostics turn
+      that denial into an actionable message; this string is what the OS shows
+      in the permission prompt itself.
+    -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>PandaSpy finds and monitors 3D printers on your local network.</string>
+
+    <!--
+      NSBonjourServices is deliberately OMITTED. It declares the mDNS/Bonjour
+      service types an app may browse with NSNetServiceBrowser. Bambu printers
+      are found over SSDP (UPnP multicast) plus a subnet probe, not Bonjour, so
+      there is no service type to list. Add this key only if a future discovery
+      path actually uses mDNS.
+    -->
+  </dict>
+</plist>
