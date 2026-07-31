@@ -1,5 +1,9 @@
 # PandaSpy
 
+<p align="center">
+  <img src="assets/mascot.png" alt="The PandaSpy mascot: a detective panda in a fedora and trench coat, inspecting a 3D-printer nozzle through a magnifying glass" width="220" />
+</p>
+
 A cross-platform desktop tray application that monitors Bambu Lab 3D printers
 over the local network.
 
