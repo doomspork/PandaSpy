@@ -21,15 +21,18 @@ publish      = false
 [dependencies]
 pandaspy-proto = { workspace = true }
 
+getrandom    = { workspace = true }
 rustls       = { workspace = true }
+serde        = { workspace = true }
 sha2         = { workspace = true }
 thiserror    = { workspace = true }
 tokio        = { workspace = true, features = ["net", "time", "rt", "sync", "macros", "io-util"] }
 tokio-rustls = { workspace = true }
 
 [dev-dependencies]
-rcgen = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+rcgen      = { workspace = true }
+serde_json = { workspace = true }
+tokio      = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
 
 [lints]
 workspace = true

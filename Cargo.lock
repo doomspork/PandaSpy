@@ -2831,9 +2831,12 @@ dependencies = [
 name = "pandaspy-client"
 version = "0.1.0"
 dependencies = [
+ "getrandom 0.4.3",
  "pandaspy-proto",
  "rcgen",
  "rustls",
+ "serde",
+ "serde_json",
  "sha2",
  "thiserror 2.0.19",
  "tokio",

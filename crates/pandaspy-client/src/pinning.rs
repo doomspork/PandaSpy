@@ -11,10 +11,21 @@
 use std::fmt;
 
 use pandaspy_proto::DeviceSerial;
+use sha2::{Digest, Sha256};
 
 /// SHA-256 of the printer's DER-encoded leaf certificate.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CertificateFingerprint(pub [u8; 32]);
+
+impl CertificateFingerprint {
+    /// Fingerprint a DER-encoded leaf certificate — the one thing the whole
+    /// TOFU scheme turns on. The printer's cert is self-signed and its bytes
+    /// are the identity; we hash them rather than trust any field inside.
+    #[must_use]
+    pub fn of_der(cert_der: &[u8]) -> Self {
+        Self(Sha256::digest(cert_der).into())
+    }
+}
 
 impl fmt::Debug for CertificateFingerprint {
     /// Hex, because a byte array in a log line is unreadable and the user may
@@ -165,5 +176,22 @@ mod tests {
     fn fingerprints_render_as_hex() {
         let fingerprint = CertificateFingerprint([0xab; 32]);
         assert_eq!(fingerprint.to_string(), "ab".repeat(32));
+    }
+
+    #[test]
+    fn der_fingerprint_is_stable_and_distinguishing() {
+        // Same bytes → same pin (the property re-connection relies on);
+        // different bytes → different pin (the property that catches a swap).
+        let a = CertificateFingerprint::of_der(b"leaf-cert-a");
+        let b = CertificateFingerprint::of_der(b"leaf-cert-b");
+        assert_eq!(a, CertificateFingerprint::of_der(b"leaf-cert-a"));
+        assert_ne!(a, b);
+
+        // A known SHA-256 vector, so a future hashing change is caught here.
+        let empty = CertificateFingerprint::of_der(b"");
+        assert_eq!(
+            empty.to_string(),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 }
