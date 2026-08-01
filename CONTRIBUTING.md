@@ -5,7 +5,7 @@ monitors Bambu Lab 3D printers over the LAN, targeting macOS, Windows and Linux
 from **one** codebase.
 
 This file is the short version. **[CLAUDE.md](CLAUDE.md) is the deep reference**
-— it explains not just the rules below but *why* each exists and how it fails
+— it explains not just the rules below but _why_ each exists and how it fails
 quietly if broken. Read it before a non-trivial change; several parts of this
 repo (the release wiring, the placement of platform-conditional code, the serde
 discipline) are easy to break in ways CI only catches late.
@@ -63,7 +63,7 @@ reasoning; here is what you must not violate:
 
 2. **`pandaspy-proto` stays pure.** No I/O, no clock, no randomness, no platform
    APIs. It is compiled for `wasm32-unknown-unknown` in CI precisely to catch
-   impurity. If that job fails, *move* the offending code out — do not add a
+   impurity. If that job fails, _move_ the offending code out — do not add a
    shim to make wasm happy.
 
 3. **Parse leniently.** The printer protocol is undocumented and changes across
