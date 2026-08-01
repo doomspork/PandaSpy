@@ -22,23 +22,30 @@
 	let launchAtLogin = $state(untrack(() => settings.launchAtLogin));
 	let error = $state<string | null>(null);
 
-	async function persist() {
+	// Reverts to whatever was on screen before the change being persisted, so
+	// a rejected `onSave` doesn't leave a control showing a value that was
+	// never actually saved.
+	async function persist(previous: { locale: string | null; launchAtLogin: boolean }) {
 		error = null;
 		try {
 			await onSave({ locale, launchAtLogin });
 		} catch (err) {
+			locale = previous.locale;
+			launchAtLogin = previous.launchAtLogin;
 			error = t('settings-save-error', { message: String(err) });
 		}
 	}
 
 	function handleLocaleChange(value: string) {
+		const previous = { locale, launchAtLogin };
 		locale = value === '' ? null : value;
-		void persist();
+		void persist(previous);
 	}
 
 	function handleLaunchToggle() {
+		const previous = { locale, launchAtLogin };
 		launchAtLogin = !launchAtLogin;
-		void persist();
+		void persist(previous);
 	}
 </script>
 

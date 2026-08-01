@@ -67,6 +67,7 @@ print-status = { $status ->
 }
 
 card-remaining = Pozostało { $time }
+card-progress-percent = { $percent }%
 card-layer = Warstwa { $layer } / { $total }
 
 card-nozzle-temp = { $hasTarget ->
@@ -149,7 +150,10 @@ add-printer-manual-serial = Numer seryjny
 add-printer-manual-address = Adres IP
 add-printer-manual-access-code = Kod dostępu
 add-printer-manual-nickname = Nazwa własna (opcjonalnie)
-add-printer-manual-access-code-hint = Znajdziesz go na ekranie drukarki w Ustawienia → WLAN. PandaSpy przechowuje go w { $keyring }, nigdy w pliku listy drukarek.
+add-printer-manual-access-code-hint = { $hasKeyring ->
+    [yes] Znajdziesz go na ekranie drukarki w Ustawienia → WLAN. PandaSpy przechowuje go w { $keyring }, nigdy w pliku listy drukarek.
+   *[no] Znajdziesz go na ekranie drukarki w Ustawienia → WLAN. PandaSpy przechowuje go bezpiecznie, nigdy w pliku listy drukarek.
+}
 add-printer-manual-submit = Dodaj drukarkę
 add-printer-manual-error-required = Podaj numer seryjny i kod dostępu.
 add-printer-manual-error = Nie udało się dodać drukarki: { $message }

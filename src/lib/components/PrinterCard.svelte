@@ -78,7 +78,11 @@
 		<div class="status-row">
 			<span class="status-text">{t('print-status', { status: snapshot.status ?? 'unknown' })}</span>
 			{#if snapshot.progressPercent !== null}
-				<span class="percent">{roundOrNull(snapshot.progressPercent)}%</span>
+				<span class="percent"
+					>{t('card-progress-percent', {
+						percent: roundOrNull(snapshot.progressPercent) ?? 0
+					})}</span
+				>
 			{/if}
 		</div>
 

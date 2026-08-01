@@ -78,6 +78,7 @@ print-status = { $status ->
 }
 
 card-remaining = { $time } left
+card-progress-percent = { $percent }%
 card-layer = Layer { $layer } / { $total }
 
 card-nozzle-temp = { $hasTarget ->
@@ -165,7 +166,13 @@ add-printer-manual-serial = Serial number
 add-printer-manual-address = IP address
 add-printer-manual-access-code = Access code
 add-printer-manual-nickname = Nickname (optional)
-add-printer-manual-access-code-hint = Find this on the printer's screen under Settings → WLAN. PandaSpy stores it in { $keyring }, never in the printer list file.
+# `hasKeyring` is "no" for the brief window before `getSettings()` resolves,
+# when the Add screen is reachable but the keyring's platform name isn't
+# known yet — falls back to a generic claim instead of an empty `in .`.
+add-printer-manual-access-code-hint = { $hasKeyring ->
+    [yes] Find this on the printer's screen under Settings → WLAN. PandaSpy stores it in { $keyring }, never in the printer list file.
+   *[no] Find this on the printer's screen under Settings → WLAN. PandaSpy stores it securely, never in the printer list file.
+}
 add-printer-manual-submit = Add printer
 add-printer-manual-error-required = Enter a serial number and an access code.
 add-printer-manual-error = Couldn't add this printer: { $message }

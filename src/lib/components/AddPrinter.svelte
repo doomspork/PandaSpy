@@ -18,7 +18,8 @@
 	}: {
 		settings: SettingsView | null;
 		onBack: () => void;
-		onDone: () => void;
+		/** Called with the serial that was just added, once `addPrinter` resolves. */
+		onDone: (serial: string) => void;
 	} = $props();
 
 	type Tab = 'discovered' | 'manual' | 'studio';
@@ -89,14 +90,15 @@
 			return;
 		}
 		submitting = true;
+		const trimmedSerial = serial.trim();
 		try {
 			await addPrinter({
-				serial: serial.trim(),
+				serial: trimmedSerial,
 				address: address.trim(),
 				accessCode,
 				nickname: nickname.trim() || null
 			});
-			onDone();
+			onDone(trimmedSerial);
 		} catch (err) {
 			formError = t('add-printer-manual-error', { message: String(err) });
 		} finally {
@@ -105,9 +107,14 @@
 	}
 
 	// Scan as soon as the Discovered tab is first shown, rather than making
-	// the user press a button to see anything.
+	// the user press a button to see anything. `discoverError === null` stops
+	// this from re-firing in a tight loop if `scan()` rejects — a failure
+	// leaves `discovery` at `null` and resets `scanning` to `false`, which
+	// would otherwise satisfy the guard again on the next tick. The "Scan
+	// again" button still clears `discoverError` itself, so a retry stays a
+	// deliberate, user-initiated action rather than an automatic one.
 	$effect(() => {
-		if (tab === 'discovered' && discovery === null && !scanning) {
+		if (tab === 'discovered' && discovery === null && !scanning && discoverError === null) {
 			scan();
 		}
 	});
@@ -188,7 +195,10 @@
 					<input type="text" bind:value={nickname} autocomplete="off" />
 				</label>
 				<p class="hint">
-					{t('add-printer-manual-access-code-hint', { keyring: settings?.keyringName ?? '' })}
+					{t('add-printer-manual-access-code-hint', {
+						hasKeyring: settings ? 'yes' : 'no',
+						keyring: settings?.keyringName ?? ''
+					})}
 				</p>
 				{#if formError}<p class="error">{formError}</p>{/if}
 				<button class="btn primary" type="submit" disabled={submitting}>

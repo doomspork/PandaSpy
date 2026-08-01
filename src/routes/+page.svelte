@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import {
 		getSettings,
 		listPrinters,
@@ -37,7 +38,16 @@
 		activeTrust ? printers.find((p) => p.serial === activeTrust.serial) : undefined
 	);
 
+	// Serials removed locally but not necessarily settled on the Rust side yet.
+	// A `printer://update` for one of these is stale — it was either already
+	// in flight when `removePrinter` was called, or arrives just after — and
+	// must not resurrect the card. Nothing reads this set directly in a
+	// template, but `SvelteSet` (rather than a plain `Set`) is still correct
+	// here since it's mutated from inside runes-mode component state.
+	const removedSerials = new SvelteSet<string>();
+
 	function upsertPrinter(printer: PrinterView) {
+		if (removedSerials.has(printer.serial)) return;
 		const index = printers.findIndex((p) => p.serial === printer.serial);
 		printers =
 			index === -1 ? [...printers, printer] : printers.map((p, i) => (i === index ? printer : p));
@@ -103,10 +113,18 @@
 
 	async function handleRemove(serial: string) {
 		const previous = printers;
+		removedSerials.add(serial);
 		printers = printers.filter((p) => p.serial !== serial);
 		try {
 			await removePrinter(serial);
+			// Defensive: drop anything that landed for this serial in the gap
+			// between the optimistic filter above and `removedSerials` taking
+			// effect for `upsertPrinter`.
+			printers = printers.filter((p) => p.serial !== serial);
 		} catch (err) {
+			// The removal did not happen, so this serial's updates are live
+			// again — undo the guard along with the optimistic removal.
+			removedSerials.delete(serial);
 			printers = previous;
 			loadError = String(err);
 		}
@@ -155,7 +173,14 @@
 			</div>
 		</div>
 	{:else if view === 'add'}
-		<AddPrinter {settings} onBack={() => (view = 'list')} onDone={() => (view = 'list')} />
+		<AddPrinter
+			{settings}
+			onBack={() => (view = 'list')}
+			onDone={(serial) => {
+				removedSerials.delete(serial);
+				view = 'list';
+			}}
+		/>
 	{:else if view === 'settings' && settings}
 		<Settings {settings} onBack={() => (view = 'list')} onSave={handleSettingsSave} />
 	{/if}
