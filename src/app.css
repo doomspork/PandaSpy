@@ -1,0 +1,202 @@
+/**
+ * PandaSpy window theme.
+ *
+ * One small stylesheet for a small popover: a warm paper-and-ink palette in
+ * light mode, the same structure inverted for dark, and a single accent
+ * (bamboo green — the thing this app watches is measured in filament) used
+ * for anything actively printing or connected. System fonts only — this is a
+ * desktop app with no network access to fetch a webfont from, and a native
+ * font stack is also what makes the window feel like part of the OS rather
+ * than a webpage inside one.
+ */
+
+:root {
+	--bg: #f5f3ee;
+	--surface: #ffffff;
+	--surface-2: #edeae1;
+	--border: #e0dbcd;
+	--text: #201e1a;
+	--text-muted: #726c5e;
+
+	--accent: #2f7d52;
+	--accent-contrast: #ffffff;
+	--accent-soft: rgba(47, 125, 82, 0.12);
+
+	--warn: #a8720f;
+	--warn-soft: rgba(168, 114, 15, 0.14);
+
+	--danger: #b8402c;
+	--danger-soft: rgba(184, 64, 44, 0.14);
+
+	--radius-sm: 6px;
+	--radius-md: 10px;
+
+	--font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+	--shadow-1: 0 1px 2px rgba(20, 18, 14, 0.08);
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #16181a;
+		--surface: #1e2023;
+		--surface-2: #26292d;
+		--border: #34373c;
+		--text: #f1efe9;
+		--text-muted: #a29c8d;
+
+		--accent: #57c98c;
+		--accent-contrast: #0d1210;
+		--accent-soft: rgba(87, 201, 140, 0.16);
+
+		--warn: #e0a83f;
+		--warn-soft: rgba(224, 168, 63, 0.16);
+
+		--danger: #ef6b57;
+		--danger-soft: rgba(239, 107, 87, 0.16);
+
+		--shadow-1: 0 1px 3px rgba(0, 0, 0, 0.4);
+		color-scheme: dark;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: var(--font-ui);
+	font-size: 13px;
+	line-height: 1.45;
+	-webkit-font-smoothing: antialiased;
+	overflow-x: hidden;
+}
+
+button,
+input,
+select {
+	font-family: inherit;
+	color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+	margin: 0;
+}
+
+a {
+	color: var(--accent);
+}
+
+::selection {
+	background: var(--accent-soft);
+}
+
+/* A native-width scrollbar eats a real fraction of a 360-420px popover.
+   WebKit and Chromium (macOS/Linux WebKit2GTK, Windows WebView2) both honour
+   this; anything else falls back to its own native bar. */
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--border);
+	border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+/* Shared, low-level building blocks every screen/component composes with. */
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4em;
+	border: 1px solid var(--border);
+	background: var(--surface);
+	color: var(--text);
+	border-radius: var(--radius-sm);
+	padding: 0.45em 0.85em;
+	font-size: 0.8rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+	background: var(--surface-2);
+}
+
+.btn:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+
+.btn.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-contrast);
+}
+
+.btn.primary:hover:not(:disabled) {
+	filter: brightness(1.05);
+}
+
+.btn.danger {
+	background: var(--danger);
+	border-color: var(--danger);
+	color: #fff;
+}
+
+.btn.danger:hover:not(:disabled) {
+	filter: brightness(1.05);
+}
+
+.icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+}
+
+.icon-btn:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+
+.icon-btn.danger:hover {
+	background: var(--danger-soft);
+	color: var(--danger);
+}
+
+.muted {
+	color: var(--text-muted);
+}
+
+.error {
+	color: var(--danger);
+	font-size: 0.8rem;
+}
