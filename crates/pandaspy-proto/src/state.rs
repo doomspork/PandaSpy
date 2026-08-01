@@ -216,11 +216,17 @@ impl PrinterState {
     }
 
     /// Remaining print time.
+    ///
+    /// The minutes→seconds conversion saturates rather than multiplying
+    /// straight: `mc_remaining_time` is untrusted wire data, and a garbage value
+    /// near `i64::MAX` would otherwise overflow `u64` (a debug panic, a release
+    /// wrap). Saturating keeps this crate's promise that no printer payload can
+    /// make it panic — an absurd value yields an absurd (but harmless) duration.
     #[must_use]
     pub fn remaining(&self) -> Option<Duration> {
         self.mc_remaining_time
             .filter(|minutes| *minutes >= 0)
-            .map(|minutes| Duration::from_secs(minutes as u64 * 60))
+            .map(|minutes| Duration::from_secs((minutes as u64).saturating_mul(60)))
     }
 
     /// Estimated completion, given the caller's clock.
@@ -428,6 +434,20 @@ mod tests {
             Some(now + Duration::from_secs(96 * 60)),
             "eta is caller-clocked; this crate owns no clock"
         );
+    }
+
+    #[test]
+    fn remaining_saturates_on_a_hostile_value_rather_than_panicking() {
+        // `mc_remaining_time` is untrusted wire data. A value near `i64::MAX`
+        // would overflow the minutes→seconds multiply — a panic in a debug
+        // build. It must saturate instead: this crate never panics on a payload.
+        let hostile: PrinterState =
+            serde_json::from_str(r#"{"mc_remaining_time": 9223372036854775807}"#).unwrap();
+        assert_eq!(hostile.remaining(), Some(Duration::from_secs(u64::MAX)));
+
+        // A negative value means "not reported", not a zero-length duration.
+        let negative: PrinterState = serde_json::from_str(r#"{"mc_remaining_time": -1}"#).unwrap();
+        assert_eq!(negative.remaining(), None);
     }
 
     #[test]
