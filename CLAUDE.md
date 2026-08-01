@@ -514,6 +514,24 @@ fail on a version mismatch.
 `ci.yml` runs `cargo metadata --locked`, which is what catches that whole class
 of regression.
 
+One more, governing the release **PR title** rather than the versions: do **not**
+set `separate-pull-requests: false`. It forces Release Please down the
+grouped/merge path, whose combined title is always the branch — "chore: release
+main", with the version gone. Leaving it unset (the default per-package
+behaviour) keeps the single package's versioned title, "chore(main): release
+0.2.0", and names the branch `release-please--branches--main--components--pandaspy`.
+For the same reason there is no `pull-request-title-pattern` override: the default
+already produces the versioned title, and a custom pattern without a
+`${scope}`/`${component}` slot silently drops the branch into `${version}` and
+brings "release main" back. The title also only resolves once a config is on a
+branch, so verify any change with
+`release-please release-pr --dry-run --target-branch=<scratch-branch>` before
+pushing, rather than churning the real release PR. (Getting a versioned title
+also needs the repo setting **"Allow GitHub Actions to create and approve pull
+requests"** enabled — without it Release Please builds the branch and commit but
+fails at the PR step with "GitHub Actions is not permitted to create or approve
+pull requests".)
+
 ### Release ordering
 
 The build workflow **attaches to a release that already exists**. It never
