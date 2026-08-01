@@ -111,6 +111,15 @@ pub fn add_printer(
     if access_code.trim().is_empty() {
         return Err("access code must not be empty".to_owned());
     }
+    // Reject a non-IP address here rather than persisting it: the session layer
+    // can only dial an `IpAddr` and would otherwise list the printer as a
+    // permanently disconnected card with no explanation. A blank/hostname entry
+    // fails fast and visibly instead. (Discovery-sourced adds always carry a
+    // real IP, so this only bites manual entry.)
+    let address = address.trim().to_owned();
+    if address.parse::<std::net::IpAddr>().is_err() {
+        return Err("address must be a valid IP address".to_owned());
+    }
     state.add_printer(serial, address, access_code, normalise(nickname))
 }
 

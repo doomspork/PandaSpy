@@ -8,6 +8,7 @@
 //! The window never opens a socket; it renders what it is told.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pandaspy_client::{
@@ -43,6 +44,11 @@ pub struct AppState {
     /// serial → live handle. `Mutex` (not async) because every touch is a quick
     /// map edit, never held across `.await`.
     printers: Mutex<HashMap<String, PrinterHandle>>,
+    /// Monotonic source of per-handle generations. A replacement (re-add,
+    /// resolve-trust) installs a new handle under the same serial; the
+    /// generation lets a superseded session's forwarder recognise it no longer
+    /// owns the entry and stop writing to it. See [`AppState::spawn_supervisor`].
+    next_generation: AtomicU64,
     /// Active UI locale, used to resolve HMS/error text into views.
     lang: Mutex<String>,
     app: AppHandle,
@@ -56,6 +62,10 @@ struct PrinterHandle {
     connection: ConnectionView,
     state: Option<PrinterState>,
     shutdown: watch::Sender<bool>,
+    /// Which supervisor generation owns this entry. A forwarder only mutates the
+    /// handle when its captured generation still matches, so a stopped-then-
+    /// replaced session cannot write stale state into its successor.
+    generation: u64,
 }
 
 impl AppState {
@@ -86,9 +96,15 @@ impl AppState {
             backend,
             pins,
             printers: Mutex::new(HashMap::new()),
+            next_generation: AtomicU64::new(0),
             lang: Mutex::new(lang),
             app,
         }
+    }
+
+    /// A fresh, unique generation for a newly-installed printer handle.
+    fn next_generation(&self) -> u64 {
+        self.next_generation.fetch_add(1, Ordering::Relaxed)
     }
 
     /// Bring every configured printer online.
@@ -171,26 +187,40 @@ impl AppState {
     /// Snapshot every configured printer for the UI, in configured order.
     #[must_use]
     pub fn printer_views(&self) -> Vec<PrinterView> {
+        // Collect everything the mapping needs from under the locks, then drop
+        // them before calling into `pandaspy-proto`. Mapping outside the locks
+        // keeps the hold short and, defensively, means a panic inside the proto
+        // mapping on a hostile payload cannot poison these mutexes and wedge
+        // every other command and forwarder.
         let lang = self.lang.lock().unwrap().clone();
-        let printers = self.printers.lock().unwrap();
-        let config = self.config.lock().unwrap();
+        let raw: Vec<(PrinterEntry, ConnectionView, Option<PrinterState>)> = {
+            let printers = self.printers.lock().unwrap();
+            let config = self.config.lock().unwrap();
+            config
+                .printers
+                .iter()
+                .map(|entry| {
+                    let handle = entry.serial.as_ref().and_then(|s| printers.get(&s.0));
+                    let connection = handle
+                        .map(|h| h.connection.clone())
+                        .unwrap_or(ConnectionView::DISCONNECTED);
+                    let state = handle.and_then(|h| h.state.clone());
+                    (entry.clone(), connection, state)
+                })
+                .collect()
+        };
 
-        config
-            .printers
-            .iter()
-            .filter_map(|entry| {
+        raw.into_iter()
+            .filter_map(|(entry, connection, state)| {
                 let serial = entry.serial.as_ref()?.0.clone();
-                let handle = printers.get(&serial);
                 Some(PrinterView {
                     serial,
                     nickname: entry.nickname.clone(),
                     model: None,
                     address: entry.last_address.clone(),
-                    connection: handle
-                        .map(|h| h.connection.clone())
-                        .unwrap_or(ConnectionView::DISCONNECTED),
-                    state: handle
-                        .and_then(|h| h.state.as_ref())
+                    connection,
+                    state: state
+                        .as_ref()
                         .map(|s| PrinterSnapshot::from_state(s, &lang)),
                 })
             })
@@ -308,12 +338,14 @@ impl AppState {
     fn insert_idle(&self, entry: PrinterEntry) {
         if let Some(serial) = entry.serial.as_ref().map(|s| s.0.clone()) {
             let (shutdown, _rx) = watch::channel(false);
+            let generation = self.next_generation();
             self.printers.lock().unwrap().insert(
                 serial,
                 PrinterHandle {
                     connection: ConnectionView::DISCONNECTED,
                     state: None,
                     shutdown,
+                    generation,
                 },
             );
         }
@@ -356,12 +388,20 @@ impl AppState {
         let (events_tx, mut events_rx) = tokio::sync::mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
+        // A fresh generation stamps both the handle and its forwarder. If this
+        // printer is later stopped and replaced (re-add, resolve-trust), the old
+        // supervisor's forwarder — which may still emit a final `Disconnected`
+        // or a late `Report` after shutdown is *signalled* but before its task
+        // ends — will see a mismatched generation and drop the event instead of
+        // corrupting its successor's handle.
+        let generation = self.next_generation();
         self.printers.lock().unwrap().insert(
             serial.clone(),
             PrinterHandle {
                 connection: ConnectionView::DISCONNECTED,
                 state: None,
                 shutdown: shutdown_tx,
+                generation,
             },
         );
 
@@ -382,7 +422,7 @@ impl AppState {
         let app = self.app.clone();
         tauri::async_runtime::spawn(async move {
             while let Some(event) = events_rx.recv().await {
-                forward_event(&app, &serial, event);
+                forward_event(&app, &serial, generation, event);
             }
         });
     }
@@ -390,7 +430,12 @@ impl AppState {
 
 /// Fold one session event into shared state and emit the appropriate Tauri
 /// event. Runs on the forwarder task; it re-locks the managed state itself.
-fn forward_event(app: &AppHandle, serial: &str, event: SessionEvent) {
+///
+/// `generation` is the identity of the supervisor that owns this forwarder. If
+/// the printer has since been replaced (re-add, resolve-trust) the handle under
+/// this serial carries a newer generation, and every branch here becomes a
+/// no-op — a superseded session can neither mutate nor emit for its successor.
+fn forward_event(app: &AppHandle, serial: &str, generation: u64, event: SessionEvent) {
     use tauri::Manager;
     let Some(state) = app.try_state::<AppState>() else {
         return;
@@ -399,18 +444,36 @@ fn forward_event(app: &AppHandle, serial: &str, event: SessionEvent) {
     match event {
         SessionEvent::State(connection) => {
             let view = ConnectionView::from_state(&connection);
-            if let Some(handle) = state.printers.lock().unwrap().get_mut(serial) {
-                handle.connection = view;
+            // Check generation and mutate under the same guard: no window for a
+            // replacement to slip in between the ownership check and the write.
+            let mut printers = state.printers.lock().unwrap();
+            match printers.get_mut(serial) {
+                Some(handle) if handle.generation == generation => handle.connection = view,
+                _ => return,
             }
         }
         SessionEvent::Report(printer_state) => {
-            if let Some(handle) = state.printers.lock().unwrap().get_mut(serial) {
-                handle.state = Some(*printer_state);
+            let mut printers = state.printers.lock().unwrap();
+            match printers.get_mut(serial) {
+                Some(handle) if handle.generation == generation => {
+                    handle.state = Some(*printer_state);
+                }
+                _ => return,
             }
         }
         SessionEvent::TrustDecisionRequired {
             pinned, presented, ..
         } => {
+            // Only prompt if this forwarder still owns the printer, so a
+            // superseded session cannot raise a trust dialog for a cert the
+            // current session never saw.
+            {
+                let printers = state.printers.lock().unwrap();
+                match printers.get(serial) {
+                    Some(handle) if handle.generation == generation => {}
+                    _ => return,
+                }
+            }
             let _ = app.emit(
                 events::TRUST_REQUIRED,
                 serde_json::json!({
