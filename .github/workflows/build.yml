@@ -52,8 +52,14 @@ jobs:
           - label: macOS (Apple silicon)
             runner: macos-14
             target: aarch64-apple-darwin
+          # Intel macOS is cross-compiled on the arm64 runner: GitHub retired
+          # macos-13 (the last free Intel image), so a `macos-13` job just
+          # queues forever for a runner that no longer exists. macos-14's Xcode
+          # SDK builds x86_64 fine, and the arm64 runner is faster and cheaper
+          # than an Intel one. (`x86_64-apple-darwin` is installed by the setup
+          # action from `target` below.)
           - label: macOS (Intel)
-            runner: macos-13
+            runner: macos-14
             target: x86_64-apple-darwin
           - label: Windows (x86-64)
             runner: windows-latest

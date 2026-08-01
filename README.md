@@ -57,12 +57,12 @@ any later change as a decision only you can make. The full model is in
 
 ## Platforms
 
-| Target                | Runner used in CI |
-| --------------------- | ----------------- |
-| macOS (Apple silicon) | `macos-14`        |
-| macOS (Intel)         | `macos-13`        |
-| Windows (x86-64)      | `windows-latest`  |
-| Linux (x86-64)        | `ubuntu-22.04`    |
+| Target                | Runner used in CI  |
+| --------------------- | ------------------ |
+| macOS (Apple silicon) | `macos-14`         |
+| macOS (Intel)         | `macos-14` (cross) |
+| Windows (x86-64)      | `windows-latest`   |
+| Linux (x86-64)        | `ubuntu-22.04`     |
 
 Linux is built on Ubuntu 22.04 deliberately: a newer builder would raise the
 glibc floor and lock out users on stable distributions.
