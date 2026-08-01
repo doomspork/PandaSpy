@@ -12,13 +12,17 @@
 //! Together with `pandaspy-store` this is one of the two places in the repository
 //! permitted to use `#[cfg(target_os)]`. See `CLAUDE.md`.
 
+mod app;
+mod commands;
 mod i18n;
 mod tray;
+mod view;
 
 use serde::Serialize;
 use tauri::{Manager, State};
 use tauri_plugin_autostart::MacosLauncher;
 
+use crate::app::AppState;
 use crate::i18n::Localiser;
 
 /// What the app can tell you about itself.
@@ -81,8 +85,25 @@ fn main() {
         // OS notifications (print finished, printer error). Initialised now; the
         // code that raises them lands with the printer session, from Rust.
         .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![diagnostics])
+        // Every command the frontend can invoke. Implementations live in
+        // `crate::commands`; `diagnostics` stays here as the self-describe hook.
+        .invoke_handler(tauri::generate_handler![
+            diagnostics,
+            commands::list_printers,
+            commands::discover_printers,
+            commands::add_printer,
+            commands::remove_printer,
+            commands::reorder_printers,
+            commands::resolve_trust,
+            commands::get_settings,
+            commands::set_settings,
+            commands::import_studio,
+        ])
         .setup(move |app| {
+            // Captured by value; rebound `mut` so the stored-locale override
+            // below can refine the active locale before the tray is built.
+            let mut localiser = localiser;
+
             // A menu-bar app has no Dock presence — no Dock icon, no
             // app-switcher entry. Without this the scaffold bounces into the
             // Dock like an ordinary window app. macOS-only because the concept
@@ -96,25 +117,40 @@ fn main() {
             // the reasoning for why Linux differs.
             tray::configure_window(app);
 
-            // NB: autostart stays OFF. We register the plugin (above) so the
-            // settings UI can flip it via `autostart:default`, but we never
-            // call `app.autolaunch().enable()` — opting in is the user's choice.
+            // Load persisted state — printer list, chosen secret backend, pins.
+            // The provisional locale is the OS-negotiated one set above; a stored
+            // override from config wins over it, so resolve that before anything
+            // reads a locale-dependent string.
+            let state = AppState::load(app.handle().clone(), localiser.active().to_owned());
+            if let Some(stored) = state.stored_locale() {
+                let effective = localiser.negotiate(&[stored]);
+                localiser.set_active(&effective);
+                state.set_lang(effective);
+            }
 
-            // Managed, not dropped: the handle is how the tray menu gets rebuilt
-            // when the user changes language, and how the icon gets swapped to
-            // reflect print state.
+            // NB: autostart is applied from `set_settings` (the settings UI),
+            // never forced on here — opting in is the user's choice.
+
+            // Managed, not dropped: the tray handle is how the menu gets rebuilt
+            // on a language change, and how the icon reflects print state. Build
+            // it with the now-final locale.
             let tray = tray::install(app, &localiser)?;
             app.manage(tray);
             app.manage(localiser);
 
-            // TODO(scaffold): the Rust -> frontend event bridge. Rust owns ALL
-            // printer state — discovery (`pandaspy-discovery`), the connection
-            // (`pandaspy-client`) and the parsed status (`pandaspy-proto`) live
-            // here, behind this process. As state changes, push it to the
-            // frontend with `app.emit("printer://update", &state)` (a Tauri
-            // event); the window renders what it is told and NEVER opens a
-            // socket to a printer itself. Wire this in the integration milestone
-            // once the client feeds parsed state in.
+            // The Rust -> frontend event bridge. Rust owns ALL printer state —
+            // discovery (`pandaspy-discovery`), the connection (`pandaspy-client`)
+            // and the parsed status (`pandaspy-proto`) all live behind this
+            // process. Sessions push `printer://update` events (see
+            // `crate::app`); the window renders what it is told and NEVER opens a
+            // socket to a printer itself.
+            //
+            // Order matters: `manage` first, `start` second. Each session spawns
+            // a forwarder that resolves the state with `try_state`, which is
+            // empty until `manage` has run.
+            app.manage(state);
+            app.state::<AppState>().start();
+
             Ok(())
         })
         .run(tauri::generate_context!())

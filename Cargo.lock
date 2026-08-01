@@ -2892,6 +2892,9 @@ version = "0.1.0"
 dependencies = [
  "fluent-bundle",
  "include_dir",
+ "pandaspy-client",
+ "pandaspy-discovery",
+ "pandaspy-proto",
  "pandaspy-store",
  "serde",
  "serde_json",
@@ -2902,7 +2905,9 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-positioner",
  "tauri-plugin-single-instance",
+ "tokio",
  "unic-langid",
+ "zeroize",
 ]
 
 [[package]]

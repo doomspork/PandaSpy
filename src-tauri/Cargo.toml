@@ -28,11 +28,13 @@ publish      = false
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
-pandaspy-store = { workspace = true }
-
-# TODO(scaffold): pandaspy-proto, pandaspy-discovery and pandaspy-client get added in the
-# commits that first wire them in, so `cargo deny` reviews their dependency
-# trees in the context of the change that needs them.
+# The domain crates, wired in at the integration milestone: proto for the
+# parsed state, discovery for finding printers, client for the sessions, store
+# for config/secrets/pins. `cargo deny` reviews their trees from here.
+pandaspy-client    = { workspace = true }
+pandaspy-discovery = { workspace = true }
+pandaspy-proto     = { workspace = true }
+pandaspy-store     = { workspace = true }
 
 fluent-bundle = { workspace = true }
 include_dir   = { workspace = true }
@@ -40,6 +42,9 @@ serde         = { workspace = true }
 serde_json    = { workspace = true }
 sys-locale    = "0.3.2"
 tauri         = { version = "2.11.5", features = ["tray-icon"] }
+# The async runtime the client sessions and discovery run on. Tauri re-exports
+# a tokio, but depending on it directly keeps our spawns explicit.
+tokio         = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros"] }
 
 # Platform-shell plugins. All desktop-only; none pulls a domain crate in.
 #   single-instance  a second launch focuses the running window, not a duplicate
@@ -53,6 +58,9 @@ tauri-plugin-positioner      = { version = "2.3.3", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2.4.3"
 
 unic-langid   = { workspace = true }
+# Wraps the machine key material handed to pandaspy-store's encrypted-file
+# secret fallback, so it is zeroed on drop rather than left in freed memory.
+zeroize       = { workspace = true }
 
 [lints]
 workspace = true
