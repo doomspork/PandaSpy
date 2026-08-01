@@ -603,9 +603,20 @@ Everything below is deliberate scaffolding debt, not oversight.
   `APPLE_CERTIFICATE`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`,
   `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and the
   Windows secrets. These are being provisioned separately.
-- **Updater is off.** `latest.json` generation is wired but gated behind the
-  repository variable `PANDASPY_UPDATER_ENABLED`, because it needs signed bundles.
-  Turning it on also needs a `plugins.updater` public key in `tauri.conf.json`.
+- **Updater is off, but wired (M8).** `tauri-plugin-updater` +
+  `tauri-plugin-process` are registered; the frontend drives
+  check/download/install/relaunch through their JS API (no custom Tauri
+  command), and `latest.json` generation is gated behind the repository
+  variable `PANDASPY_UPDATER_ENABLED`. Three things keep it inert until signing
+  exists and **must all change together**: `plugins.updater.pubkey` in
+  `tauri.conf.json` is a format-valid PLACEHOLDER (its private half was
+  generated then destroyed, never committed — decode the base64 to read the
+  embedded TODO); `bundle.createUpdaterArtifacts` is deliberately **absent**,
+  not `false`, because tauri-cli signs every updater-eligible bundle on every
+  `tauri build` whenever it is truthy — which would fail every bundle job, CI
+  and local, until `TAURI_SIGNING_PRIVATE_KEY` is set; and the two signing
+  secrets stay commented out in `build.yml`. The rollout order is spelled out
+  in that file's `TODO(signing)` block.
 - **Confirm the bundle identifier before the first release.** It is currently
   `io.github.seancallan.pandaspy`. Changing it after a release breaks updates and
   orphans user data on macOS.
@@ -646,7 +657,14 @@ Everything below is deliberate scaffolding debt, not oversight.
   hand-rolled on top of it** — no rumqttc (aws-lc-rs, native certs, a
   vulnerable webpki). `deny.toml` denies `openssl-sys` and `native-tls`
   outright, because a system trust store means three certificate behaviours on
-  three platforms. Two verifiers accept any _chain_ (printers are
+  three platforms — for the _printer_ path, which is the whole point of the
+  rule. The one place a system trust store is _correct_ is the M8 update
+  channel: it talks to GitHub over an ordinary CA-signed certificate, so
+  `tauri-plugin-updater`'s `rustls-tls` feature pulls
+  `rustls-platform-verifier`/`rustls-native-certs` to validate it. That is
+  scoped to GitHub and never touches a printer connection, and `main()` installs
+  the **ring** `CryptoProvider` process-wide so even that channel stays off
+  aws-lc-rs. Two verifiers accept any _chain_ (printers are
   self-signed): `pandaspy-discovery::net`'s reads a serial and sends nothing,
   and `pandaspy-client`'s gates the access code behind a fingerprint pin —
   **and both must still verify the handshake signature** (the client's does;
