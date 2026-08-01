@@ -9,7 +9,6 @@
   "draft": true,
   "include-component-in-tag": false,
   "separate-pull-requests": false,
-  "pull-request-title-pattern": "chore: release ${version}",
   "changelog-sections": [
     {
       "type": "feat",
