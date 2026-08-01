@@ -217,9 +217,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn both_seeded_locales_are_embedded() {
+    fn seeded_locales_are_embedded() {
+        // Exact-set guard against a locale silently vanishing from the embed.
+        // The plumbing discovers locales by walking the directory, so adding a
+        // language needs no production change — only this expected list grows.
         let localiser = Localiser::new();
-        assert_eq!(localiser.available(), vec!["en-US", "pl-PL"]);
+        assert_eq!(localiser.available(), vec!["en-US", "pl-PL", "zh-CN"]);
     }
 
     #[test]
