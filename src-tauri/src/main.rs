@@ -25,6 +25,22 @@ use tauri_plugin_autostart::MacosLauncher;
 use crate::app::AppState;
 use crate::i18n::Localiser;
 
+/// The updater plugin resolves its own crypto backend at compile time via the
+/// `rustls-tls` feature, and that feature deliberately opts out of bundling a
+/// default `CryptoProvider` — that opt-out is what keeps aws-lc-rs out of this
+/// tree instead of pulling it in alongside ring. Nothing else in the process
+/// installs a *default* provider (`pandaspy-client` and `pandaspy-discovery`
+/// each build their own `rustls::ClientConfig` with an explicit
+/// `Arc<CryptoProvider>`, so they never touch the global one), so without this
+/// call the updater's first HTTPS request panics looking for one. Installing
+/// ring here, not aws-lc-rs, keeps "rustls with the ring provider everywhere"
+/// true for the update channel too. `install_default` returning `Err` just
+/// means a provider is already installed — fine, and not our problem to
+/// diagnose.
+fn install_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 /// What the app can tell you about itself.
 ///
 /// Exists mainly so the placeholder frontend has a real command to call, and so
@@ -53,6 +69,8 @@ fn diagnostics(localiser: State<'_, Localiser>) -> Diagnostics {
 }
 
 fn main() {
+    install_crypto_provider();
+
     let mut localiser = Localiser::new();
 
     // `sys_locale` reads whatever the OS considers the user's preference. It is
@@ -85,6 +103,18 @@ fn main() {
         // OS notifications (print finished, printer error). Initialised now; the
         // code that raises them lands with the printer session, from Rust.
         .plugin(tauri_plugin_notification::init())
+        // Self-update (M8). The frontend drives the whole flow — check on
+        // launch and every 24h, prompt, download, install — through this
+        // plugin's JS API; there is no Rust command to call it because none
+        // is needed. `endpoints`/`pubkey` live in `tauri.conf.json` and are
+        // still placeholders (see CLAUDE.md § Known gaps, "Updater is off"):
+        // the endpoint 404s until a release publishes `latest.json`, which
+        // itself stays gated behind signing secrets, so `check()` fails
+        // closed rather than serving something unverifiable.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Lets the frontend call `relaunch()` after the updater installs, so
+        // the new version starts without asking the user to reopen it.
+        .plugin(tauri_plugin_process::init())
         // Every command the frontend can invoke. Implementations live in
         // `crate::commands`; `diagnostics` stays here as the self-describe hook.
         .invoke_handler(tauri::generate_handler![

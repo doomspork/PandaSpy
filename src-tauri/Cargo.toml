@@ -38,6 +38,13 @@ pandaspy-store     = { workspace = true }
 
 fluent-bundle = { workspace = true }
 include_dir   = { workspace = true }
+# Pulled in directly (not just transitively through the domain crates) so
+# `main` can install the ring `CryptoProvider` process-wide before the
+# updater plugin makes its first HTTPS request. See the comment in
+# `main.rs`: `tauri-plugin-updater`'s `rustls-tls` feature deliberately opts
+# out of bundling a default provider (that is what keeps aws-lc-rs out of
+# this tree), which means nothing installs one unless we do.
+rustls        = { workspace = true }
 serde         = { workspace = true }
 serde_json    = { workspace = true }
 sys-locale    = "0.3.2"
@@ -52,10 +59,25 @@ tokio         = { workspace = true, features = ["rt-multi-thread", "sync", "time
 #                    expose the Tray* positions and the `on_tray_event` hook)
 #   autostart        launch-at-login, toggled from settings, DEFAULT OFF
 #   notification     OS notifications; raised from Rust in a later milestone
+#   updater          checks/downloads/installs releases from GitHub; the
+#                    frontend drives it entirely through the plugin's JS API
+#                    (see `capabilities/default.json` for the granted
+#                    permissions). Pinned off default-features so the TLS
+#                    backend choice (rustls, not native-tls) is explicit
+#                    rather than inherited from upstream's defaults — see
+#                    CLAUDE.md § Known gaps, "Updater is off", for why the
+#                    endpoint/pubkey in tauri.conf.json are still placeholders.
+#   process          gives the frontend `relaunch()` to restart the app after
+#                    the updater installs, without a custom Tauri command.
 tauri-plugin-autostart       = "2.5.1"
 tauri-plugin-notification    = "2.3.3"
 tauri-plugin-positioner      = { version = "2.3.3", features = ["tray-icon"] }
+tauri-plugin-process         = "2.3.1"
 tauri-plugin-single-instance = "2.4.3"
+tauri-plugin-updater         = { version = "2.10.1", default-features = false, features = [
+  "rustls-tls",
+  "zip",
+] }
 
 unic-langid   = { workspace = true }
 # Wraps the machine key material handed to pandaspy-store's encrypted-file

@@ -26,8 +26,10 @@ on:
       updater-json:
         description: >
           Generate and upload latest.json for the auto-updater. Requires
-          TAURI_SIGNING_PRIVATE_KEY, so it stays off until signing is
-          provisioned.
+          TAURI_SIGNING_PRIVATE_KEY AND bundle.createUpdaterArtifacts: true
+          in tauri.conf.json (see the TODO(signing) comment on the bundle
+          step below for why both must land together), so this stays off
+          until signing is provisioned.
         type: boolean
         default: false
   workflow_dispatch:
@@ -92,8 +94,22 @@ jobs:
           # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           #
-          # Tauri updater signing (also flip `updater-json` to true, and add the
-          # public key under `plugins.updater` in tauri.conf.json):
+          # Tauri updater signing. `tauri.conf.json`'s `plugins.updater.pubkey`
+          # already holds a PLACEHOLDER key (format-valid, matched private half
+          # deliberately discarded and never committed) so the config is valid
+          # JSON and the plugin registers — replace it with the real public key
+          # from `cargo tauri signer generate` in the SAME change that adds
+          # these two secrets. Do the same for `bundle.createUpdaterArtifacts`:
+          # it is deliberately ABSENT from tauri.conf.json right now (its
+          # default is `false`), not just false, because tauri-cli's bundler
+          # (`sign_updaters` in `crates/tauri-cli/src/bundle.rs`) tries to sign
+          # every updater-eligible bundle — Nsis, Deb, AppImage, the macOS
+          # updater package — on EVERY `tauri build`, on every platform,
+          # whenever it is truthy, regardless of `updater-json`/`uploadUpdaterJson`
+          # below. Set it to `true` only once TAURI_SIGNING_PRIVATE_KEY is a
+          # real secret here, or every bundle job (CI and local `pnpm tauri
+          # build` alike) starts failing with "A public key has been found,
+          # but no private key":
           # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           #

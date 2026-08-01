@@ -1,7 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Baseline permissions for the main window. Deliberately small: PandaSpy handles printer access codes, so every entry needs a reason. `core:default` is Tauri's baseline. `autostart:default` lets the settings UI toggle launch-at-login over IPC — it stays OFF until the user opts in (Rust never calls enable()); this only grants the toggle. `notification:default` lets the app raise OS notifications for print events. single-instance and positioner are intentionally absent: both are driven entirely from Rust (second-launch focus, tray-anchored window moves) and expose nothing over IPC, so they need no capability here — a later milestone that calls them from the frontend adds the permission in that change.",
+  "description": "Baseline permissions for the main window. Deliberately small: PandaSpy handles printer access codes, so every entry needs a reason. `core:default` is Tauri's baseline. `autostart:default` lets the settings UI toggle launch-at-login over IPC — it stays OFF until the user opts in (Rust never calls enable()); this only grants the toggle. `notification:default` lets the app raise OS notifications for print events. `updater:default` lets the frontend call check/download/install for self-update (M8); it is inert until a release publishes a signed `latest.json` — see the `plugins.updater` config in `tauri.conf.json`. `process:default` lets the frontend call `relaunch()` after the updater installs, so the app restarts on the new version without asking. single-instance and positioner are intentionally absent: both are driven entirely from Rust (second-launch focus, tray-anchored window moves) and expose nothing over IPC, so they need no capability here — a later milestone that calls them from the frontend adds the permission in that change.",
   "windows": ["main"],
-  "permissions": ["core:default", "autostart:default", "notification:default"]
+  "permissions": [
+    "core:default",
+    "autostart:default",
+    "notification:default",
+    "updater:default",
+    "process:default"
+  ]
 }

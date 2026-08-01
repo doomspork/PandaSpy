@@ -61,9 +61,13 @@ jobs:
       release-id: ${{ needs.resolve.outputs.release-id }}
       # Build the tagged commit, not whatever main has drifted to since.
       ref: ${{ needs.resolve.outputs.tag }}
-      # latest.json needs signed bundles. Set the repository variable
-      # PANDASPY_UPDATER_ENABLED to "true" once TAURI_SIGNING_PRIVATE_KEY exists
-      # and tauri.conf.json has a `plugins.updater` public key — no workflow
-      # edit required.
+      # latest.json needs signed bundles. `plugins.updater.pubkey` in
+      # tauri.conf.json already holds a placeholder (see build.yml's
+      # TODO(signing) comment) — set the repository variable
+      # PANDASPY_UPDATER_ENABLED to "true" once TAURI_SIGNING_PRIVATE_KEY
+      # exists AND that placeholder is replaced with the real public key AND
+      # `bundle.createUpdaterArtifacts: true` is added to tauri.conf.json (all
+      # three together, or the bundle step fails — see build.yml). No workflow
+      # edit required here beyond the repository variable.
       updater-json: ${{ vars.PANDASPY_UPDATER_ENABLED == 'true' }}
     secrets: inherit

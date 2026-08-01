@@ -55,5 +55,16 @@
         "installMode": "perMachine"
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/doomspork/PandaSpy/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      },
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IFBMQUNFSE9MREVSIG1pbmlzaWduIGtleSAtLSBUT0RPKHNpZ25pbmcpOiByZXBsYWNlIGJlZm9yZSBlbmFibGluZyB0aGUgdXBkYXRlciAoc2VlIENMQVVERS5tZCwgS25vd24gZ2FwczogVXBkYXRlciBpcyBvZmYpClJXUWZpM2ZHUkFZVnAwaUdJeG84SFdpQjR4eUdadzhTR29RTzkrdXN0ekdtUUpyMDFWM25FUTUwCg=="
+    }
   }
 }
