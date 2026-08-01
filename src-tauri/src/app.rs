@@ -75,7 +75,9 @@ impl AppState {
         });
 
         let (secrets, backend) = choose_secret_backend(&base);
-        let pins = Arc::new(PinStoreAdapter::new(CertPinStore::new(base.join("pins.json"))));
+        let pins = Arc::new(PinStoreAdapter::new(CertPinStore::new(
+            base.join("pins.json"),
+        )));
 
         Self {
             config: Mutex::new(config),
@@ -219,11 +221,11 @@ impl AppState {
         };
         {
             let mut config = self.config.lock().unwrap();
-            config.printers.retain(|p| p.serial.as_ref().map(|s| &s.0) != Some(&serial));
+            config
+                .printers
+                .retain(|p| p.serial.as_ref().map(|s| &s.0) != Some(&serial));
             config.printers.push(entry.clone());
-            self.config_store
-                .save(&config)
-                .map_err(|e| e.to_string())?;
+            self.config_store.save(&config).map_err(|e| e.to_string())?;
         }
 
         self.stop_supervisor(&serial);
@@ -241,10 +243,10 @@ impl AppState {
         self.stop_supervisor(serial);
         {
             let mut config = self.config.lock().unwrap();
-            config.printers.retain(|p| p.serial.as_ref().map(|s| s.0.as_str()) != Some(serial));
-            self.config_store
-                .save(&config)
-                .map_err(|e| e.to_string())?;
+            config
+                .printers
+                .retain(|p| p.serial.as_ref().map(|s| s.0.as_str()) != Some(serial));
+            self.config_store.save(&config).map_err(|e| e.to_string())?;
         }
         let _ = self.secrets.forget(serial);
         let _ = self.pins.inner.forget(serial);
@@ -292,7 +294,10 @@ impl AppState {
                 .cloned()
         };
         if let Some(entry) = entry {
-            let code = self.secrets.access_code(serial).map_err(|e| e.to_string())?;
+            let code = self
+                .secrets
+                .access_code(serial)
+                .map_err(|e| e.to_string())?;
             self.stop_supervisor(serial);
             self.spawn_supervisor(entry, code);
         }
@@ -338,8 +343,10 @@ impl AppState {
         };
 
         let endpoint = PrinterEndpoint::new(address, DeviceSerial(serial.clone()));
-        let transport =
-            TlsTransport::new(endpoint.clone(), Arc::clone(&self.pins) as Arc<dyn PinStore>);
+        let transport = TlsTransport::new(
+            endpoint.clone(),
+            Arc::clone(&self.pins) as Arc<dyn PinStore>,
+        );
         let spec = SessionSpec {
             endpoint,
             credentials: Credentials::lan(access_code),
@@ -420,7 +427,11 @@ fn forward_event(app: &AppHandle, serial: &str, event: SessionEvent) {
     }
 
     // Push the whole updated view for this printer — the UI replaces its card.
-    if let Some(view) = state.printer_views().into_iter().find(|v| v.serial == serial) {
+    if let Some(view) = state
+        .printer_views()
+        .into_iter()
+        .find(|v| v.serial == serial)
+    {
         let _ = app.emit(events::PRINTER_UPDATE, view);
     }
 }
@@ -464,8 +475,7 @@ fn choose_secret_backend(base: &std::path::Path) -> (Arc<dyn SecretStore>, Secre
     if keyring_available() {
         (Arc::new(KeyringSecrets::new()), SecretBackend::OsKeyring)
     } else {
-        let store =
-            EncryptedFileSecrets::new(machine_key_material(), base.join("secrets.enc"));
+        let store = EncryptedFileSecrets::new(machine_key_material(), base.join("secrets.enc"));
         (Arc::new(store), SecretBackend::EncryptedFile)
     }
 }

@@ -184,7 +184,11 @@ impl PrinterSnapshot {
                 .map(|ams| ams.units.iter().map(AmsUnitView::from_unit).collect())
                 .unwrap_or_default(),
             active_tray: state.active_tray().map(ActiveTrayView::from_active),
-            hms: state.hms.iter().map(|e| HmsView::from_entry(e, lang)).collect(),
+            hms: state
+                .hms
+                .iter()
+                .map(|e| HmsView::from_entry(e, lang))
+                .collect(),
             print_error: state.print_error_description(lang).map(str::to_owned),
         }
     }
@@ -365,10 +369,12 @@ mod tests {
 
     #[test]
     fn connection_states_flatten_for_the_ui() {
-        assert_eq!(ConnectionView::from_state(&ConnectionState::Connected).status, "connected");
-        let failed = ConnectionView::from_state(&ConnectionState::Failed(
-            FailureReason::WrongAccessCode,
-        ));
+        assert_eq!(
+            ConnectionView::from_state(&ConnectionState::Connected).status,
+            "connected"
+        );
+        let failed =
+            ConnectionView::from_state(&ConnectionState::Failed(FailureReason::WrongAccessCode));
         assert_eq!(failed.status, "failed");
         assert_eq!(failed.reason, Some("wrong-access-code"));
     }
