@@ -555,10 +555,10 @@ fn machine_key_material() -> zeroize::Zeroizing<Vec<u8>> {
     #[cfg(target_os = "linux")]
     {
         for path in ["/etc/machine-id", "/var/lib/dbus/machine-id"] {
-            if let Ok(id) = std::fs::read(path) {
-                if !id.is_empty() {
-                    return zeroize::Zeroizing::new(id);
-                }
+            if let Ok(id) = std::fs::read(path)
+                && !id.is_empty()
+            {
+                return zeroize::Zeroizing::new(id);
             }
         }
     }
