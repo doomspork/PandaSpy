@@ -3,7 +3,6 @@
   "release-type": "rust",
   "bump-minor-pre-major": true,
   "draft": true,
-  "separate-pull-requests": false,
   "packages": {
     ".": {
       "package-name": "pandaspy",
