@@ -1,0 +1,22 @@
+# mise (https://mise.jdx.dev) — optional convenience for contributors.
+#
+#   mise install     # fetch Node + pnpm at the versions this repo pins
+#   pnpm install     # then install the JS dependencies
+#
+# Rust is deliberately NOT managed here. It is pinned in `rust-toolchain.toml`
+# and installed automatically by rustup on the first `cargo` command; that file
+# is the single source of truth for the toolchain (CI reads it too). Having mise
+# manage Rust as well would put a second toolchain on PATH that shadows rustup
+# and ignores `rust-toolchain.toml`. Install rustup once (https://rustup.rs) and
+# the pinned toolchain follows from the repo.
+
+[settings]
+# Take the Node version straight from `.nvmrc` rather than repeating it here, so
+# Node stays single-sourced (shared with nvm users and CI's setup action).
+idiomatic_version_file_enable_tools = ["node"]
+
+[tools]
+# The one version mirrored from elsewhere: it must match `packageManager` in
+# package.json (pnpm has no idiomatic version file for mise to read). Both rarely
+# change; bump them together.
+pnpm = "10.23.0"

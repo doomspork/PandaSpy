@@ -22,6 +22,11 @@ a list of `-dev` packages on Linux) are in CLAUDE.md § Running, testing and
 building. The Rust toolchain is pinned in `rust-toolchain.toml` and the Node
 version in `.nvmrc`; use those.
 
+If you use [mise](https://mise.jdx.dev), `mise install` sets up Node and pnpm at
+the pinned versions in one step (it reads `.nvmrc` and `mise.toml`); then run
+`pnpm install`. Rust still comes from rustup via `rust-toolchain.toml` — mise
+does not manage it, on purpose (see the comment in `mise.toml`).
+
 ## The gate
 
 One command is the definition of "passing", and it is exactly what CI runs:
