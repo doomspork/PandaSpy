@@ -1,38 +1,56 @@
 /**
- * PandaSpy window theme.
+ * PandaSpy window theme — "Build Plate".
  *
- * One small stylesheet for a small popover: a warm paper-and-ink palette in
- * light mode, the same structure inverted for dark, and a single accent
- * (bamboo green — the thing this app watches is measured in filament) used
- * for anything actively printing or connected. System fonts only — this is a
- * desktop app with no network access to fetch a webfont from, and a native
- * font stack is also what makes the window feel like part of the OS rather
- * than a webpage inside one.
+ * The popover borrows from the thing it watches: a warm black ground with a
+ * faint dot grid like a textured build plate, readouts in a monospace face
+ * like a printer's own screen, and colour reserved for meaning. Bamboo green
+ * is "running"; Bambu gold is "look at this"; heat orange is temperature and
+ * auth failures. The splash of colour everywhere else comes from the
+ * filament itself (AMS canisters are drawn in the reported tray colour).
+ *
+ * No colour bars on containers: state lives in a small mono chip next to
+ * the printer's name, so a card's edge never has to carry meaning.
+ *
+ * Both faces are bundled (`@fontsource-variable/*`, OFL) and served from the
+ * app itself — PandaSpy never fetches anything from the network but printers
+ * and the update check, and `default-src 'self'` in the CSP covers fonts.
+ * Scripts outside Latin/Cyrillic fall through to the system stack.
  */
 
+@import '@fontsource-variable/martian-mono';
+@import '@fontsource-variable/familjen-grotesk';
+
 :root {
-	--bg: #f5f3ee;
-	--surface: #ffffff;
-	--surface-2: #edeae1;
-	--border: #e0dbcd;
-	--text: #201e1a;
-	--text-muted: #726c5e;
+	--bg: #f3efe4;
+	--grid: #e2dccb;
+	--surface: #fbf9f3;
+	--surface-2: #ece6d6;
+	--border: #ddd5c1;
+	--border-strong: #c9b98e;
+	--text: #1c1a14;
+	--text-muted: #6b6454;
+	--text-faint: #8e8673;
 
-	--accent: #2f7d52;
+	--accent: #13803f;
 	--accent-contrast: #ffffff;
-	--accent-soft: rgba(47, 125, 82, 0.12);
+	--accent-soft: #d6eedc;
 
-	--warn: #a8720f;
-	--warn-soft: rgba(168, 114, 15, 0.14);
+	--warn: #8f6206;
+	--warn-soft: #f6e8c4;
+	--gold: #e3b04b;
 
-	--danger: #b8402c;
-	--danger-soft: rgba(184, 64, 44, 0.14);
+	--danger: #b4471f;
+	--danger-soft: #f7dccf;
+	--heat: #e07a3f;
 
-	--radius-sm: 6px;
-	--radius-md: 10px;
+	/* Text on a filled chip (gold, heat, accent) — dark in both themes. */
+	--chip-ink: #15130e;
 
-	--font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	--radius-sm: 4px;
+	--radius-md: 8px;
+
+	--font-ui: 'Familjen Grotesk Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'Martian Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
 	--shadow-1: 0 1px 2px rgba(20, 18, 14, 0.08);
 	color-scheme: light;
@@ -40,22 +58,27 @@
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #16181a;
-		--surface: #1e2023;
-		--surface-2: #26292d;
-		--border: #34373c;
-		--text: #f1efe9;
-		--text-muted: #a29c8d;
+		--bg: #15130e;
+		--grid: #2a2619;
+		--surface: #1d1a13;
+		--surface-2: #2a2619;
+		--border: #2e2a1f;
+		--border-strong: #4a3f22;
+		--text: #efe9da;
+		--text-muted: #a9a190;
+		--text-faint: #7d7666;
 
-		--accent: #57c98c;
-		--accent-contrast: #0d1210;
-		--accent-soft: rgba(87, 201, 140, 0.16);
+		--accent: #3fda78;
+		--accent-contrast: #15130e;
+		--accent-soft: #13301d;
 
-		--warn: #e0a83f;
-		--warn-soft: rgba(224, 168, 63, 0.16);
+		--warn: #e3b04b;
+		--warn-soft: #2a2414;
+		--gold: #e3b04b;
 
-		--danger: #ef6b57;
-		--danger-soft: rgba(239, 107, 87, 0.16);
+		--danger: #f0a27a;
+		--danger-soft: #33190f;
+		--heat: #e07a3f;
 
 		--shadow-1: 0 1px 3px rgba(0, 0, 0, 0.4);
 		color-scheme: dark;
@@ -73,13 +96,32 @@ body {
 
 body {
 	margin: 0;
-	background: var(--bg);
+	background-color: var(--bg);
+	background-image: radial-gradient(var(--grid) 1px, transparent 1.2px);
+	background-size: 12px 12px;
 	color: var(--text);
 	font-family: var(--font-ui);
 	font-size: 13px;
 	line-height: 1.45;
 	-webkit-font-smoothing: antialiased;
 	overflow-x: hidden;
+}
+
+/* macOS popover: the window is transparent and the app clips itself to a
+   rounded panel, like other menu-bar apps. `src-tauri` adds the class only
+   where the window really is transparent (see `tray::on_page_load`). */
+:root.popover-rounded,
+:root.popover-rounded body {
+	background: transparent;
+}
+
+:root.popover-rounded .app {
+	border-radius: 10px;
+	border: 1px solid var(--border-strong);
+	overflow: hidden;
+	background-color: var(--bg);
+	background-image: radial-gradient(var(--grid) 1px, transparent 1.2px);
+	background-size: 12px 12px;
 }
 
 button,
@@ -131,8 +173,8 @@ a {
 	background: var(--surface);
 	color: var(--text);
 	border-radius: var(--radius-sm);
-	padding: 0.45em 0.85em;
-	font-size: 0.8rem;
+	padding: 0.5em 0.9em;
+	font-size: 0.82rem;
 	font-weight: 600;
 	cursor: pointer;
 	transition:
@@ -155,6 +197,39 @@ a {
 	color: var(--accent-contrast);
 }
 
+/* A short uppercase state label in the readout face: RUN, WARN, AUTH… */
+.chip {
+	display: inline-block;
+	flex-shrink: 0;
+	font-family: var(--font-mono);
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	line-height: 1;
+	padding: 4px 6px;
+	border-radius: 3px;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+/* Small uppercase field label above a readout value. */
+.label {
+	font-family: var(--font-mono);
+	font-size: 9px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.mono {
+	font-family: var(--font-mono);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
 .btn.primary:hover:not(:disabled) {
 	filter: brightness(1.05);
 }
@@ -173,8 +248,8 @@ a {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	width: 36px;
+	height: 36px;
 	border: none;
 	background: transparent;
 	color: var(--text-muted);

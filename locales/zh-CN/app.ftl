@@ -74,39 +74,61 @@ print-status = { $status ->
    *[unknown] 未知
 }
 
-card-remaining = 剩余 { $time }
 card-progress-percent = { $percent }%
 card-layer = 第 { $layer } / { $total } 层
 
-card-nozzle-temp = { $hasTarget ->
-    [yes] 喷嘴 { $current }° / { $target }°
-   *[no] 喷嘴 { $current }°
-}
-
-card-bed-temp = { $hasTarget ->
-    [yes] 热床 { $current }° / { $target }°
-   *[no] 热床 { $current }°
-}
-
-card-chamber-temp = 腔体 { $current }°
-card-task-name = 任务：{ $name }
 card-print-error = 打印错误：{ $message }
 
-card-expand = 显示详情
-card-collapse = 隐藏详情
-card-remove-label = 移除打印机
+# Accessible names for the popover's per-printer controls.
+card-expand-named = 显示 { $name }
+card-collapse-named = 隐藏 { $name }
+card-remove-named = 移除 { $name }
+
+# The short state label beside a printer's name; shown in capitals.
+chip = { $chip ->
+    [run] 打印
+    [pause] 暂停
+    [warn] 警告
+    [fail] 失败
+    [auth] 认证
+    [idle] 空闲
+    [done] 完成
+    [wait] 等待
+   *[off] 离线
+}
+
+# Labels of the strip above the list when there is more than one printer.
+summary = { $field ->
+    [printers] 打印机
+    [printing] 打印中
+    [attention] 需关注
+   *[next-done] 最快完成
+}
+
+detail-layer = 层
+detail-progress = 进度
+detail-remaining = 剩余
+detail-waiting = 正在等待打印机的首次报告…
+
+readout = { $which ->
+    [nozzle] 喷嘴
+    [bed] 热床
+   *[chamber] 腔体
+}
+
 card-remove-confirm-title = 移除 { $name }？
 card-remove-confirm-body = PandaSpy 将停止监控这台打印机，并忘记为其保存的访问码。
 card-remove-confirm-confirm = 移除
 
 ## AMS
 
-ams-kind = { $kind ->
-    [standard] AMS
-    [lite] AMS Lite
-    [pro2] AMS 2 Pro
-    [ht] AMS HT
-   *[unknown] AMS
+# `number` is the unit's id + 1. HT units number from 129, so the type
+# leads and the raw number follows in brackets.
+ams-unit-name = { $kind ->
+    [lite] AMS Lite { $number }
+    [pro2] AMS 2 Pro { $number }
+    [ht] AMS HT (AMS { $number })
+   *[other] AMS { $number }
 }
 
 ams-humidity = 湿度 { $percent }%
@@ -194,6 +216,10 @@ settings-title = 设置
 settings-language = 语言
 settings-language-system = 跟随系统
 settings-launch-at-login = 登录时启动
+settings-printers = 打印机
+settings-move-up = 上移 { $name }
+settings-move-down = 下移 { $name }
+settings-printers-error = 无法更新打印机：{ $message }
 
 settings-secrets = { $backend ->
     [os-keyring] 访问码保存在你系统的 { $keyring } 中。

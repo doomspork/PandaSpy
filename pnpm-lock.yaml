@@ -14,6 +14,12 @@ importers:
       '@fluent/langneg':
         specifier: 0.7.0
         version: 0.7.0
+      '@fontsource-variable/familjen-grotesk':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/martian-mono':
+        specifier: 5.3.0
+        version: 5.3.0
       '@tauri-apps/api':
         specifier: 2.11.1
         version: 2.11.1
@@ -229,6 +235,12 @@ packages:
   '@fluent/langneg@0.7.0':
     resolution: {integrity: sha512-StAM0vgsD1QK+nFikaKs9Rxe3JGNipiXrpmemNGwM4gWERBXPe9gjzsBoKjgBgq1Vyiy+xy/C652QIWY+MPyYw==}
     engines: {node: '>=14.0.0', npm: '>=7.0.0'}
+
+  '@fontsource-variable/familjen-grotesk@5.3.0':
+    resolution: {integrity: sha512-R9W0xEZRIHUV658cuOGRMAIcqX1QJ8p5/W6Boooa6zAw1BAozU//mr8C0VNggSE26/VHPwj2XNyMAG6yUJmjxA==}
+
+  '@fontsource-variable/martian-mono@5.3.0':
+    resolution: {integrity: sha512-0wVODx9ILwNnaYC4XCuSaFRYtj1Prd89MRVaSuv2ng6zLiQkS4SepaWEPefs7vqCZS8sbEOA8jb/4F5KNMnGdg==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1547,6 +1559,10 @@ snapshots:
   '@fluent/bundle@0.19.1': {}
 
   '@fluent/langneg@0.7.0': {}
+
+  '@fontsource-variable/familjen-grotesk@5.3.0': {}
+
+  '@fontsource-variable/martian-mono@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

@@ -8,24 +8,25 @@
 {#if entries.length > 0}
 	<ul class="hms">
 		{#each entries as entry, i (entry.code ?? i)}
-			<li class="severity-{entry.severity ?? 'unknown'}">
-				<span class="sev-label">{t('hms-severity', { severity: entry.severity ?? 'unknown' })}</span
+			<li>
+				<span class="chip severity-{entry.severity ?? 'unknown'}"
+					>{t('hms-severity', { severity: entry.severity ?? 'unknown' })}</span
 				>
-				<span class="text">
+				<p class="text">
 					{#if entry.text}
 						{entry.text}
 					{:else if entry.code}
 						{t('hms-code-only', { code: entry.code })}
 					{/if}
-				</span>
-				{#if entry.wikiUrl}
-					<!-- `rel="external"` is also what tells eslint-plugin-svelte's
-					     SvelteKit link-check that this is a genuine external URL,
-					     not an internal route missing a `resolve()` call. -->
-					<a href={entry.wikiUrl} target="_blank" rel="external noopener noreferrer"
-						>{t('hms-learn-more')}</a
-					>
-				{/if}
+					{#if entry.wikiUrl}
+						<!-- `rel="external"` is also what tells eslint-plugin-svelte's
+						     SvelteKit link-check that this is a genuine external URL,
+						     not an internal route missing a `resolve()` call. -->
+						<a href={entry.wikiUrl} target="_blank" rel="external noopener noreferrer"
+							>{t('hms-learn-more')}</a
+						>
+					{/if}
+				</p>
 			</li>
 		{/each}
 	</ul>
@@ -38,62 +39,55 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
 	}
 
 	li {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.4rem;
-		padding: 0.35rem 0.5rem;
-		border-radius: var(--radius-sm);
-		border-left: 3px solid var(--border);
-		background: var(--surface-2);
-		font-size: 0.78rem;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 10px 0 0;
+		border-top: 1px dashed var(--border-strong);
 	}
 
-	.severity-fatal {
-		border-left-color: var(--danger);
-		background: var(--danger-soft);
+	li + li {
+		margin-top: 10px;
 	}
 
+	.chip {
+		margin-top: 1px;
+	}
+
+	.severity-fatal,
 	.severity-serious {
-		border-left-color: var(--danger);
+		background: var(--heat);
+		color: var(--chip-ink);
 	}
 
 	.severity-common {
-		border-left-color: var(--warn);
-		background: var(--warn-soft);
+		background: var(--gold);
+		color: var(--chip-ink);
 	}
 
-	.severity-info {
-		border-left-color: var(--text-muted);
-	}
-
-	.sev-label {
-		font-weight: 700;
-		text-transform: uppercase;
-		font-size: 0.65rem;
-		letter-spacing: 0.03em;
+	.severity-info,
+	.severity-unknown {
+		background: var(--surface-2);
 		color: var(--text-muted);
-	}
-
-	.severity-fatal .sev-label,
-	.severity-serious .sev-label {
-		color: var(--danger);
-	}
-
-	.severity-common .sev-label {
-		color: var(--warn);
 	}
 
 	.text {
 		flex: 1 1 auto;
+		min-width: 0;
+		font-size: 12.5px;
+		line-height: 1.4;
 	}
 
 	a {
-		font-size: 0.72rem;
+		margin-left: 0.3em;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		white-space: nowrap;
+		color: var(--warn);
 	}
 </style>

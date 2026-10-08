@@ -48,7 +48,10 @@ rustls        = { workspace = true }
 serde         = { workspace = true }
 serde_json    = { workspace = true }
 sys-locale    = "0.3.2"
-tauri         = { version = "2.11.5", features = ["tray-icon"] }
+# `macos-private-api` must match `app.macOSPrivateApi` in tauri.conf.json
+# (tauri-build checks the pair). It lets the macOS popover be a transparent
+# window so its corners can be rounded; it is inert on other platforms.
+tauri         = { version = "2.11.5", features = ["tray-icon", "macos-private-api"] }
 # The async runtime the client sessions and discovery run on. Tauri re-exports
 # a tokio, but depending on it directly keeps our spawns explicit.
 tokio         = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros"] }

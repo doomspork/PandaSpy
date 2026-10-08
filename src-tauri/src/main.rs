@@ -117,6 +117,9 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         // Every command the frontend can invoke. Implementations live in
         // `crate::commands`; `diagnostics` stays here as the self-describe hook.
+        // Tells the page when it is drawn as a rounded popover (macOS); see
+        // `tray::on_page_load`.
+        .on_page_load(tray::on_page_load)
         .invoke_handler(tauri::generate_handler![
             diagnostics,
             commands::list_printers,

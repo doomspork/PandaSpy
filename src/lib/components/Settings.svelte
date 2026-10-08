@@ -1,18 +1,51 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { availableLocales, t } from '$lib/i18nRuntime.svelte';
+	import { displayName } from '$lib/printerState';
 	import Icon from './Icon.svelte';
-	import type { SettingsView } from '$lib/ipc';
+	import type { PrinterView, SettingsView } from '$lib/ipc';
 
 	let {
 		settings,
+		printers,
 		onBack,
-		onSave
+		onSave,
+		onReorder,
+		onRemove
 	}: {
 		settings: SettingsView;
+		printers: PrinterView[];
 		onBack: () => void;
 		onSave: (next: { locale: string | null; launchAtLogin: boolean }) => Promise<void>;
+		onReorder: (serials: string[]) => Promise<void>;
+		onRemove: (serial: string) => Promise<void>;
 	} = $props();
+
+	// Removing a printer and ordering the list live here rather than on the
+	// popover: a trash can one mis-click away from a glance at a print is the
+	// wrong place for something that forgets an access code. The order set
+	// here breaks ties in the popover, which otherwise puts printers that
+	// need attention first.
+	let confirmingRemove = $state<string | null>(null);
+
+	function move(index: number, by: -1 | 1) {
+		const order = printers.map((p) => p.serial);
+		const target = index + by;
+		if (target < 0 || target >= order.length) return;
+		[order[index], order[target]] = [order[target], order[index]];
+		void updatePrinters(() => onReorder(order));
+	}
+
+	// The parent rolls back its optimistic change and rethrows; say why here,
+	// on the screen where the user just acted.
+	async function updatePrinters(action: () => Promise<void>) {
+		error = null;
+		try {
+			await action();
+		} catch (err) {
+			error = t('settings-printers-error', { message: String(err) });
+		}
+	}
 
 	// `settings` only seeds the initial form values; once the user is editing,
 	// this screen owns them until `persist()` writes back through `onSave`.
@@ -58,6 +91,62 @@
 	</header>
 
 	<div class="body">
+		{#if printers.length > 0}
+			<section class="printers">
+				<h3 class="label">{t('settings-printers')}</h3>
+				<ul>
+					{#each printers as printer, i (printer.serial)}
+						{@const name = displayName(printer)}
+						<li>
+							{#if confirmingRemove === printer.serial}
+								<div class="confirm">
+									<p>{t('card-remove-confirm-title', { name })}</p>
+									<p class="muted">{t('card-remove-confirm-body')}</p>
+									<div class="confirm-actions">
+										<button class="btn" onclick={() => (confirmingRemove = null)}
+											>{t('common-cancel')}</button
+										>
+										<button
+											class="btn danger"
+											onclick={() => {
+												confirmingRemove = null;
+												void updatePrinters(() => onRemove(printer.serial));
+											}}>{t('card-remove-confirm-confirm')}</button
+										>
+									</div>
+								</div>
+							{:else}
+								<span class="printer-name">{name}</span>
+								<button
+									class="icon-btn"
+									disabled={i === 0}
+									onclick={() => move(i, -1)}
+									aria-label={t('settings-move-up', { name })}
+								>
+									<Icon name="chevron-up" size={14} />
+								</button>
+								<button
+									class="icon-btn"
+									disabled={i === printers.length - 1}
+									onclick={() => move(i, 1)}
+									aria-label={t('settings-move-down', { name })}
+								>
+									<Icon name="chevron-down" size={14} />
+								</button>
+								<button
+									class="icon-btn danger"
+									onclick={() => (confirmingRemove = printer.serial)}
+									aria-label={t('card-remove-named', { name })}
+								>
+									<Icon name="trash" size={14} />
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
 		<label class="field">
 			<span>{t('settings-language')}</span>
 			<select
@@ -132,6 +221,67 @@
 		padding: 0.4rem 0.55rem;
 		font-size: 0.82rem;
 		font-weight: 400;
+	}
+
+	.printers {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.printers h3 {
+		font-weight: 400;
+	}
+
+	.printers ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: var(--surface);
+	}
+
+	.printers li {
+		display: flex;
+		align-items: center;
+		gap: 0.1rem;
+		padding: 0.15rem 0.3rem 0.15rem 0.7rem;
+	}
+
+	.printers li + li {
+		border-top: 1px solid var(--border);
+	}
+
+	.printer-name {
+		flex: 1 1 auto;
+		min-width: 0;
+		font-size: 0.85rem;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.icon-btn:disabled {
+		opacity: 0.35;
+		cursor: default;
+	}
+
+	.confirm {
+		flex: 1 1 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		padding: 0.5rem 0.2rem;
+		font-size: 0.8rem;
+	}
+
+	.confirm-actions {
+		display: flex;
+		gap: 0.4rem;
+		justify-content: flex-end;
+		margin-top: 0.2rem;
 	}
 
 	.hint {
