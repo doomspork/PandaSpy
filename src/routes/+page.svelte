@@ -106,8 +106,9 @@
 		try {
 			await reorderPrinters(serials);
 		} catch (err) {
+			// Settings, where reordering happens, shows the error.
 			printers = previous;
-			loadError = String(err);
+			throw err;
 		}
 	}
 
@@ -126,7 +127,8 @@
 			// again — undo the guard along with the optimistic removal.
 			removedSerials.delete(serial);
 			printers = previous;
-			loadError = String(err);
+			// Settings, where removal happens, shows the error.
+			throw err;
 		}
 	}
 

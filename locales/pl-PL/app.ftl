@@ -204,6 +204,7 @@ settings-launch-at-login = Uruchamiaj przy starcie systemu
 settings-printers = Drukarki
 settings-move-up = Przesuń { $name } w górę
 settings-move-down = Przesuń { $name } w dół
+settings-printers-error = Nie udało się zaktualizować drukarek: { $message }
 
 settings-secrets = { $backend ->
     [os-keyring] Kody dostępu są przechowywane w systemowym { $keyring }.

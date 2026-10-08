@@ -17,8 +17,8 @@
 		printers: PrinterView[];
 		onBack: () => void;
 		onSave: (next: { locale: string | null; launchAtLogin: boolean }) => Promise<void>;
-		onReorder: (serials: string[]) => void;
-		onRemove: (serial: string) => void;
+		onReorder: (serials: string[]) => Promise<void>;
+		onRemove: (serial: string) => Promise<void>;
 	} = $props();
 
 	// Removing a printer and ordering the list live here rather than on the
@@ -33,7 +33,18 @@
 		const target = index + by;
 		if (target < 0 || target >= order.length) return;
 		[order[index], order[target]] = [order[target], order[index]];
-		onReorder(order);
+		void updatePrinters(() => onReorder(order));
+	}
+
+	// The parent rolls back its optimistic change and rethrows; say why here,
+	// on the screen where the user just acted.
+	async function updatePrinters(action: () => Promise<void>) {
+		error = null;
+		try {
+			await action();
+		} catch (err) {
+			error = t('settings-printers-error', { message: String(err) });
+		}
 	}
 
 	// `settings` only seeds the initial form values; once the user is editing,
@@ -99,7 +110,7 @@
 											class="btn danger"
 											onclick={() => {
 												confirmingRemove = null;
-												onRemove(printer.serial);
+												void updatePrinters(() => onRemove(printer.serial));
 											}}>{t('card-remove-confirm-confirm')}</button
 										>
 									</div>

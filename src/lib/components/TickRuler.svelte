@@ -15,7 +15,8 @@
 	// tick for the layer being printed raised in gold. It reads like the
 	// gauge on a machine, and 1/40 steps are fine enough for a glance.
 	const TICKS = 40;
-	const done = $derived(fraction === null ? 0 : Math.round(fraction * TICKS));
+	// Rounded up, so layer 1 of 467 already lights the first tick.
+	const done = $derived(fraction === null ? 0 : Math.ceil(fraction * TICKS));
 	const ticks = $derived(
 		Array.from({ length: TICKS }, (_, i) => ({
 			current: fraction !== null && i === done - 1,

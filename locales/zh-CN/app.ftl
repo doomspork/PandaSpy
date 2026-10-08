@@ -217,6 +217,7 @@ settings-launch-at-login = 登录时启动
 settings-printers = 打印机
 settings-move-up = 上移 { $name }
 settings-move-down = 下移 { $name }
+settings-printers-error = 无法更新打印机：{ $message }
 
 settings-secrets = { $backend ->
     [os-keyring] 访问码保存在你系统的 { $keyring } 中。

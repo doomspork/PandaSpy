@@ -62,8 +62,13 @@
 						<span class="tray-sub">
 							{#if active}
 								<span class="feeding">{t('ams-active-badge')}</span>
-							{:else if tray.occupied && tray.remainPercent !== null && tray.remainPercent >= 0}
-								{t('ams-tray-remaining', { percent: roundOrNull(tray.remainPercent) ?? 0 })}
+							{/if}
+							{#if tray.occupied && tray.remainPercent !== null && tray.remainPercent >= 0}
+								<span
+									>{t('ams-tray-remaining', {
+										percent: roundOrNull(tray.remainPercent) ?? 0
+									})}</span
+								>
 							{/if}
 						</span>
 					</li>
@@ -192,6 +197,10 @@
 	}
 
 	.tray-sub {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
 		font-family: var(--font-mono);
 		font-size: 9px;
 		color: var(--text-muted);

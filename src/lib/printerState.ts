@@ -71,7 +71,7 @@ export interface FleetSummary {
 	total: number;
 	printing: number;
 	attention: number;
-	/** Seconds until the soonest running job finishes, when any reports one. */
+	/** Seconds until the soonest running job finishes, when any reports one (paused jobs excluded). */
 	nextDoneSecs: number | null;
 }
 
@@ -84,6 +84,8 @@ export function summarize(printers: PrinterView[]): FleetSummary {
 		if (cond.rank === 0) attention++;
 		if (cond.busy) {
 			printing++;
+			// A paused job's estimate is frozen, so it cannot be "next done".
+			if (printer.state?.status === 'paused') continue;
 			const remaining = printer.state?.remainingSecs ?? null;
 			if (remaining !== null && (nextDoneSecs === null || remaining < nextDoneSecs)) {
 				nextDoneSecs = remaining;

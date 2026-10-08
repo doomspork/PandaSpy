@@ -13,7 +13,9 @@
 	const snap = $derived(printer.state);
 	const name = $derived(displayName(printer));
 	const remaining = $derived(formatDuration(snap?.remainingSecs ?? null));
-	const hasLayers = $derived(snap !== null && snap.layer !== null && snap.totalLayers !== null);
+	const hasLayers = $derived(
+		snap !== null && snap.layer !== null && snap.totalLayers !== null && snap.totalLayers > 0
+	);
 
 	// One line under the name when the chip alone would not say what to do.
 	const note = $derived.by(() => {

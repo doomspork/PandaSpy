@@ -223,6 +223,7 @@ settings-launch-at-login = Launch at login
 settings-printers = Printers
 settings-move-up = Move { $name } up
 settings-move-down = Move { $name } down
+settings-printers-error = Couldn't update printers: { $message }
 
 settings-secrets = { $backend ->
     [os-keyring] Access codes are stored in your system's { $keyring }.
