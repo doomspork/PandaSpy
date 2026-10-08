@@ -22,7 +22,12 @@ fixtures/
   reports/     single MQTT report messages    -> crates/pandaspy-proto/tests/golden.rs
   sequences/   pushall + deltas, in order     -> crates/pandaspy-proto/tests/sequence.rs
   ssdp/        raw SSDP datagrams             -> crates/pandaspy-discovery/tests/ssdp_golden.rs
+  studio/      Bambu Studio's BambuStudio.conf -> crates/pandaspy-store/tests/studio.rs
 ```
+
+Studio fixtures are redacted *excerpts* of Studio's own config file (it holds
+presets, window state and recent projects too — none of it ours to keep). Keep
+every top-level key the importer reads, with its real nesting.
 
 SSDP fixtures are byte-exact datagrams — CRLF line endings included, which is
 why `.gitattributes` marks `fixtures/**` as `-text`. Capture one with
