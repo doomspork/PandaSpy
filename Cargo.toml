@@ -111,7 +111,7 @@ regex            = "1.13.1"
 # rustls with the ring provider, NOT the aws-lc-rs default: ring builds
 # cleanly on all four release targets, and one crypto stack everywhere is the
 # whole point. `deny.toml` bans openssl-sys and native-tls outright.
-rustls           = { version = "0.23.43", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls           = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 serde            = { version = "1.0.229", features = ["derive"] }
 serde_json       = "1.0.151"
 # SHA-256 for the TOFU certificate-pin fingerprint (pandaspy-client). RustCrypto,
