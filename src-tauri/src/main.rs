@@ -128,6 +128,7 @@ fn main() {
             commands::get_settings,
             commands::set_settings,
             commands::import_studio,
+            commands::add_studio_printer,
         ])
         .setup(move |app| {
             // Captured by value; rebound `mut` so the stored-locale override

@@ -162,6 +162,8 @@ add-printer-studio-import = Importuj z Bambu Studio
 add-printer-studio-importing = Szukanie drukarek z Bambu Studio…
 add-printer-studio-empty = Nie znaleziono jeszcze żadnych drukarek w Bambu Studio.
 add-printer-studio-use = Użyj
+add-printer-studio-add = Dodaj
+add-printer-studio-not-found = Nie znaleziono w tej sieci
 
 ## Monit o zaufanie certyfikatowi
 

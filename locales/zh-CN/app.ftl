@@ -175,6 +175,8 @@ add-printer-studio-import = 从 Bambu Studio 导入
 add-printer-studio-importing = 正在查找 Bambu Studio 中的打印机…
 add-printer-studio-empty = 尚未在 Bambu Studio 中找到打印机。
 add-printer-studio-use = 使用
+add-printer-studio-add = 添加
+add-printer-studio-not-found = 未在此网络中找到
 
 ## Certificate trust prompt
 
