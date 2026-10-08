@@ -410,8 +410,9 @@ If TypeScript cannot resolve `$lib` or `$app/*`, run `pnpm svelte-kit sync` —
 ### Per-platform prerequisites
 
 **macOS** — Xcode Command Line Tools (`xcode-select --install`). Nothing else.
-Bundles land in `target/release/bundle/{macos,dmg}/`. Builds are unsigned for
-now, so Gatekeeper needs a right-click → Open on a fresh download.
+Bundles land in `target/release/bundle/{macos,dmg}/`. Local builds are
+unsigned, so Gatekeeper needs a right-click → Open on a fresh download; CI
+builds are Developer ID signed and notarised (see "macOS signing").
 
 **Windows** — Visual Studio Build Tools with the "Desktop development with C++"
 workload, and the `x86_64-pc-windows-msvc` Rust toolchain. WebView2 ships with
@@ -564,6 +565,34 @@ To rebuild a release's artifacts, run **Release** via `workflow_dispatch` with
 the tag. To test packaging without any release, run **Build** via
 `workflow_dispatch`; bundles come back as workflow artifacts.
 
+### macOS signing
+
+CI signs with a **Developer ID Application** certificate and notarises with
+Apple's notary service, through tauri-action's `APPLE_*` environment. Six
+repository secrets:
+
+| Secret                       | Value                                                           |
+| ---------------------------- | --------------------------------------------------------------- |
+| `APPLE_CERTIFICATE`          | base64 of the exported `.p12` (certificate + private key)       |
+| `APPLE_CERTIFICATE_PASSWORD` | the password chosen when exporting the `.p12`                   |
+| `APPLE_SIGNING_IDENTITY`     | `Developer ID Application: <Name> (<TEAMID>)`, verbatim         |
+| `APPLE_ID`                   | the Apple Account email of a member of the team                 |
+| `APPLE_PASSWORD`             | an **app-specific** password for that account, not its real one |
+| `APPLE_TEAM_ID`              | the 10-character Team ID                                        |
+
+A Developer ID certificate belongs to the team, not the app, so one `.p12`
+signs every app the team ships; reuse an existing one rather than minting
+another (Apple caps a team at a handful).
+
+`build.yml`'s "Configure macOS signing" step exports them only when
+`APPLE_CERTIFICATE` is set: absent means an unsigned bundle plus a warning
+(forks keep building), partially set fails the job. Notarisation flakes
+transiently on Apple's side, so the bundle step has one retry, and a final
+step runs `codesign --verify`, `spctl --assess` and `stapler validate` so an
+unsigned bundle can never pass as a signed one. `bundle.macOS.hardenedRuntime`
+defaults to on, which notarisation requires; no entitlements are needed
+because the app is not sandboxed.
+
 ---
 
 ## CI
@@ -620,10 +649,10 @@ The maintainer's list for the MVP. Do not build these:
 
 Everything below is deliberate scaffolding debt, not oversight.
 
-- **No code signing.** `build.yml` has clearly marked `TODO(signing)` blocks for
-  `APPLE_CERTIFICATE`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`,
-  `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and the
-  Windows secrets. These are being provisioned separately.
+- **Windows and updater signing are not provisioned.** macOS is signed and
+  notarised (see "macOS signing"). `build.yml` keeps a clearly marked
+  `TODO(signing)` block for `TAURI_SIGNING_PRIVATE_KEY`,
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and the Windows secrets.
 - **Updater is off, but wired (M8).** `tauri-plugin-updater` +
   `tauri-plugin-process` are registered; the frontend drives
   check/download/install/relaunch through their JS API (no custom Tauri

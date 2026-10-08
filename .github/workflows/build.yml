@@ -81,24 +81,67 @@ jobs:
           targets: ${{ matrix.target }}
           cache-key: bundle-${{ matrix.target }}
 
+      # macOS Developer ID signing + notarisation. Exported into the job env
+      # only when the secrets exist, rather than set unconditionally on the
+      # bundle step: to tauri's bundler a present-but-empty APPLE_* variable is
+      # not the same as an absent one (it means "sign/notarise with this"), so
+      # a fork or a repo without the secrets must not see them at all. Without
+      # them the bundle is ad-hoc signed and Gatekeeper refuses it on a fresh
+      # download (right-click → Open). Provisioning steps: CLAUDE.md, "macOS
+      # signing".
+      - name: Configure macOS signing
+        id: apple
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPLE_CERTIFICATE}" ]; then
+            echo "::warning::APPLE_CERTIFICATE is not set; this macOS bundle will be unsigned and unnotarised."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Half a configuration is worse than none: signing without the
+          # notary credentials yields a bundle Gatekeeper still rejects, and it
+          # would look shipped. Fail instead.
+          for name in APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::APPLE_CERTIFICATE is set but ${name} is not."
+              exit 1
+            fi
+          done
+          # Heredoc form so a base64 value that wraps across lines survives.
+          # Values written here stay masked in logs: they came from secrets.
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            delim="EOF_$(uuidgen)"
+            printf '%s<<%s\n%s\n%s\n' "$name" "$delim" "${!name}" "$delim" >> "$GITHUB_ENV"
+          done
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      # Apple's notary service fails transiently (NSURLErrorDomain -1009 while
+      # polling appstoreconnect.apple.com, with the runner's network fine), so
+      # a signed macOS bundle gets one retry. tauri-action is a JS action and
+      # cannot be wrapped in a retry action; a duplicated step gated on the
+      # first one's outcome is the native pattern. Compile artifacts survive,
+      # so the retry costs only bundle → sign → notarise → upload.
       - name: Build and bundle
+        id: bundle
+        continue-on-error: ${{ steps.apple.outputs.enabled == 'true' }}
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
           # ─── TODO(signing): provision these, then uncomment ───────────────
-          # Until then: macOS bundles are unsigned and unnotarised (Gatekeeper
-          # will refuse them without a right-click → Open), Windows bundles are
-          # unsigned (SmartScreen will warn), and the updater cannot sign, so
-          # `updater-json` must stay false.
-          #
-          # macOS code signing and notarisation:
-          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # macOS signing is wired above ("Configure macOS signing"). Still
+          # unprovisioned: Windows bundles are unsigned (SmartScreen will
+          # warn), and the updater cannot sign, so `updater-json` must stay
+          # false.
           #
           # Tauri updater signing. `tauri.conf.json`'s `plugins.updater.pubkey`
           # already holds a PLACEHOLDER key (format-valid, matched private half
@@ -144,3 +187,35 @@ jobs:
           # Runners drop network connections often enough that a single
           # transient failure should not cost a whole release build.
           retryAttempts: 2
+
+      - name: Build and bundle (retry after a notarisation failure)
+        if: steps.bundle.outcome == 'failure'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Keep env and inputs in step with the first attempt; the reasons
+          # for each input are commented there.
+        with:
+          tauriScript: pnpm tauri
+          args: --target ${{ matrix.target }}
+          releaseId: ${{ inputs.release-id }}
+          uploadWorkflowArtifacts: ${{ inputs.release-id == '' }}
+          workflowArtifactNamePattern: pandaspy-${{ matrix.target }}-[name][ext]
+          uploadUpdaterJson: ${{ inputs.updater-json == true }}
+          retryAttempts: 2
+
+      # Belt and braces: prove the bundle Gatekeeper will actually see is
+      # Developer ID signed, notarised and stapled, so a silently-unsigned
+      # build can never be the one handed to beta testers.
+      - name: Verify macOS signature and notarisation
+        if: steps.apple.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="target/${{ matrix.target }}/release/bundle/macos/PandaSpy.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=4 "$app"
+          xcrun stapler validate "$app"
+          for dmg in target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
+            codesign --verify --verbose=2 "$dmg"
+          done
