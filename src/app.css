@@ -107,6 +107,23 @@ body {
 	overflow-x: hidden;
 }
 
+/* macOS popover: the window is transparent and the app clips itself to a
+   rounded panel, like other menu-bar apps. `src-tauri` adds the class only
+   where the window really is transparent (see `tray::on_page_load`). */
+:root.popover-rounded,
+:root.popover-rounded body {
+	background: transparent;
+}
+
+:root.popover-rounded .app {
+	border-radius: 10px;
+	border: 1px solid var(--border-strong);
+	overflow: hidden;
+	background-color: var(--bg);
+	background-image: radial-gradient(var(--grid) 1px, transparent 1.2px);
+	background-size: 12px 12px;
+}
+
 button,
 input,
 select {

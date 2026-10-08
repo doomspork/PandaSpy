@@ -256,6 +256,41 @@ pub fn configure_window<R: Runtime>(app: &App<R>) {
     });
 }
 
+/// Mark the page as a rounded popover once it has loaded.
+///
+/// macOS draws borderless windows with square corners, so the popover is a
+/// transparent window (`tauri.macos.conf.json`, which needs
+/// `app.macOSPrivateApi`) and the page clips itself to a rounded rectangle.
+/// The page only does that when told to: on Windows and Linux the window is
+/// opaque, so a transparent `<body>` would show the webview's default white
+/// behind it. Windows 11 already rounds borderless windows that keep their
+/// shadow; Linux gets a decorated window the window manager styles.
+///
+/// `tauri.macos.conf.json` replaces the whole `windows` array (JSON Merge
+/// Patch replaces arrays), so a change to the window in `tauri.conf.json` must
+/// be repeated there.
+#[cfg(target_os = "macos")]
+pub fn on_page_load<R: Runtime>(
+    webview: &tauri::Webview<R>,
+    payload: &tauri::webview::PageLoadPayload<'_>,
+) {
+    if webview.label() == MAIN_WINDOW
+        && matches!(payload.event(), tauri::webview::PageLoadEvent::Finished)
+        && let Err(error) =
+            webview.eval("document.documentElement.classList.add('popover-rounded')")
+    {
+        eprintln!("[tray] could not mark the popover as rounded: {error}");
+    }
+}
+
+/// Windows and Linux: the window is opaque; nothing to tell the page.
+#[cfg(not(target_os = "macos"))]
+pub fn on_page_load<R: Runtime>(
+    _webview: &tauri::Webview<R>,
+    _payload: &tauri::webview::PageLoadPayload<'_>,
+) {
+}
+
 /// Linux keeps the window exactly as declared in `tauri.conf.json` — decorated,
 /// centred, listed in the taskbar — because a tray-anchored popover is not
 /// possible there. See the module docs.
