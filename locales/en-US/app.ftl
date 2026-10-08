@@ -77,39 +77,61 @@ print-status = { $status ->
    *[unknown] Unknown
 }
 
-card-remaining = { $time } left
 card-progress-percent = { $percent }%
 card-layer = Layer { $layer } / { $total }
 
-card-nozzle-temp = { $hasTarget ->
-    [yes] Nozzle { $current }° / { $target }°
-   *[no] Nozzle { $current }°
-}
-
-card-bed-temp = { $hasTarget ->
-    [yes] Bed { $current }° / { $target }°
-   *[no] Bed { $current }°
-}
-
-card-chamber-temp = Chamber { $current }°
-card-task-name = Job: { $name }
 card-print-error = Print error: { $message }
 
-card-expand = Show details
-card-collapse = Hide details
-card-remove-label = Remove printer
+# Accessible names for the popover's per-printer controls.
+card-expand-named = Show { $name }
+card-collapse-named = Hide { $name }
+card-remove-named = Remove { $name }
+
+# The short state label beside a printer's name; shown in capitals.
+chip = { $chip ->
+    [run] Run
+    [pause] Paused
+    [warn] Warn
+    [fail] Fail
+    [auth] Auth
+    [idle] Idle
+    [done] Done
+    [wait] Wait
+   *[off] Off
+}
+
+# Labels of the strip above the list when there is more than one printer.
+summary = { $field ->
+    [printers] Printers
+    [printing] Printing
+    [attention] Attention
+   *[next-done] Next done
+}
+
+detail-layer = Layer
+detail-progress = Progress
+detail-remaining = Remaining
+detail-waiting = Waiting for the printer's first report…
+
+readout = { $which ->
+    [nozzle] Nozzle
+    [bed] Bed
+   *[chamber] Chamber
+}
+
 card-remove-confirm-title = Remove { $name }?
 card-remove-confirm-body = PandaSpy will stop watching this printer and forget its stored access code.
 card-remove-confirm-confirm = Remove
 
 ## AMS
 
-ams-kind = { $kind ->
-    [standard] AMS
-    [lite] AMS Lite
-    [pro2] AMS 2 Pro
-    [ht] AMS HT
-   *[unknown] AMS
+# `number` is the unit's id + 1. HT units number from 129, so the type
+# leads and the raw number follows in brackets.
+ams-unit-name = { $kind ->
+    [lite] AMS Lite { $number }
+    [pro2] AMS 2 Pro { $number }
+    [ht] AMS HT (AMS { $number })
+   *[other] AMS { $number }
 }
 
 ams-humidity = Humidity { $percent }%
@@ -198,6 +220,9 @@ settings-title = Settings
 settings-language = Language
 settings-language-system = Follow system
 settings-launch-at-login = Launch at login
+settings-printers = Printers
+settings-move-up = Move { $name } up
+settings-move-down = Move { $name } down
 
 settings-secrets = { $backend ->
     [os-keyring] Access codes are stored in your system's { $keyring }.

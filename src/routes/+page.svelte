@@ -147,7 +147,16 @@
 	{#if view === 'list'}
 		<div class="screen">
 			<header class="bar">
-				<h1>{t('window-title')}</h1>
+				<h1>
+					<!-- The mark: a printer's face plate wearing a panda's eye patches. -->
+					<svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
+						<rect x="1" y="1" width="20" height="20" rx="5" fill="currentColor" />
+						<rect x="4" y="7" width="5.5" height="6.5" rx="2.6" fill="var(--bg)" />
+						<rect x="12.5" y="7" width="5.5" height="6.5" rx="2.6" fill="var(--bg)" />
+						<rect x="9.5" y="15.5" width="3" height="2" rx="1" fill="var(--bg)" />
+					</svg>
+					{t('window-title')}
+				</h1>
 				<div class="bar-actions">
 					<button class="icon-btn" onclick={() => (view = 'add')} aria-label={t('nav-add-printer')}>
 						<Icon name="plus" size={16} />
@@ -164,12 +173,7 @@
 			</header>
 			<div class="scroll">
 				{#if loadError}<p class="error load-error">{loadError}</p>{/if}
-				<PrinterList
-					{printers}
-					onReorder={handleReorder}
-					onRemove={handleRemove}
-					onAddPrinter={() => (view = 'add')}
-				/>
+				<PrinterList {printers} onAddPrinter={() => (view = 'add')} />
 			</div>
 		</div>
 	{:else if view === 'add'}
@@ -182,7 +186,14 @@
 			}}
 		/>
 	{:else if view === 'settings' && settings}
-		<Settings {settings} onBack={() => (view = 'list')} onSave={handleSettingsSave} />
+		<Settings
+			{settings}
+			{printers}
+			onBack={() => (view = 'list')}
+			onSave={handleSettingsSave}
+			onReorder={handleReorder}
+			onRemove={handleRemove}
+		/>
 	{/if}
 </div>
 
@@ -212,15 +223,21 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.6rem 0.75rem;
+		padding: 4px 6px 4px 16px;
+		background: var(--bg);
 		border-bottom: 1px solid var(--border);
 		flex-shrink: 0;
 	}
 
 	.bar h1 {
-		font-size: 1rem;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-family: var(--font-mono);
+		font-size: 12px;
 		font-weight: 700;
-		letter-spacing: -0.01em;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
 	}
 
 	.bar-actions {
