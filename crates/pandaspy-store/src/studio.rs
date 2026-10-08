@@ -196,7 +196,11 @@ mod tests {
 
     #[test]
     fn a_missing_file_is_an_empty_import() {
-        let path = std::env::temp_dir().join("pandaspy-no-such-studio-dir/BambuStudio.conf");
-        assert!(read_studio_config(&path).unwrap().is_empty());
+        let dir = crate::testutil::TempDir::new();
+        assert!(
+            read_studio_config(&dir.join("BambuStudio.conf"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }

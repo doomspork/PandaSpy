@@ -70,7 +70,15 @@
 		}
 	}
 
+	// Prefilling a different printer must not carry over a code typed for the
+	// last one — tabs do not remount, so the form state would otherwise survive.
+	function clearCredential() {
+		accessCode = '';
+		formError = null;
+	}
+
 	function useDiscovered(found: DiscoveredView) {
+		clearCredential();
 		serial = found.serial ?? '';
 		address = found.address;
 		nickname = found.name ?? '';
@@ -78,6 +86,7 @@
 	}
 
 	function useStudio(printer: StudioPrinterView) {
+		clearCredential();
 		serial = printer.serial;
 		address = printer.address ?? '';
 		nickname = printer.name ?? '';
@@ -91,11 +100,7 @@
 		addingSerial = printer.serial;
 		studioError = null;
 		try {
-			await addStudioPrinter({
-				serial: printer.serial,
-				address: printer.address,
-				nickname: printer.name
-			});
+			await addStudioPrinter({ serial: printer.serial, nickname: printer.name });
 			onDone(printer.serial);
 		} catch (err) {
 			studioError = String(err);

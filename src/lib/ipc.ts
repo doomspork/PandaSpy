@@ -228,12 +228,12 @@ export function importStudio(): Promise<StudioPrinterView[]> {
 	return invoke('import_studio');
 }
 
-/** Add a Studio printer using the access code Studio holds for it. */
-export function addStudioPrinter(args: {
-	serial: string;
-	address: string;
-	nickname: string | null;
-}): Promise<void> {
+/**
+ * Add a Studio printer using the access code Studio holds for it, at the
+ * address the preceding `importStudio()` resolved — the backend never takes an
+ * address from the caller for a code it is holding.
+ */
+export function addStudioPrinter(args: { serial: string; nickname: string | null }): Promise<void> {
 	return invoke('add_studio_printer', args);
 }
 

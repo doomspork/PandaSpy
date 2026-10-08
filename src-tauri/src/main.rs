@@ -168,6 +168,7 @@ fn main() {
             let tray = tray::install(app, &localiser)?;
             app.manage(tray);
             app.manage(localiser);
+            app.manage(commands::StudioImport::default());
 
             // The Rust -> frontend event bridge. Rust owns ALL printer state —
             // discovery (`pandaspy-discovery`), the connection (`pandaspy-client`)

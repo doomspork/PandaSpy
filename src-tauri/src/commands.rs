@@ -5,7 +5,9 @@
 //! result into a `camelCase` view. No protocol logic, no I/O beyond what the
 //! domain crates already own. `src/lib/ipc.ts` mirrors these signatures.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::sync::{Arc, Mutex};
 
 use pandaspy_discovery::{
     DiscoveredPrinter, DiscoveryOptions, DiscoverySource, DiscoveryVerdict, discover, net,
@@ -227,9 +229,11 @@ pub struct StudioPrinterView {
 pub async fn import_studio(
     app: AppHandle,
     state: State<'_, AppState>,
+    import: State<'_, StudioImport>,
 ) -> Result<Vec<StudioPrinterView>, String> {
     let studio = read_studio_config(&studio_config_path(&app)?).map_err(|e| e.to_string())?;
     if studio.is_empty() {
+        import.0.lock().unwrap().clear();
         return Ok(Vec::new());
     }
 
@@ -241,46 +245,70 @@ pub async fn import_studio(
         .printers;
 
     let known = state.known_serials();
-    Ok(studio
+    let mut resolved = HashMap::new();
+    let views = studio
         .into_iter()
         .map(|printer| {
             let seen = found
                 .iter()
                 .find(|d| d.serial.as_ref() == Some(&printer.serial));
+            let address = seen.map(|d| d.address).or(printer.address);
+            if let Some(address) = address {
+                resolved.insert(printer.serial.0.clone(), address);
+            }
             StudioPrinterView {
                 name: seen.and_then(|d| d.name.clone()),
                 model: seen
                     .and_then(|d| d.model.as_ref())
                     .map(|m| m.display_name().to_owned()),
-                address: seen
-                    .map(|d| d.address)
-                    .or(printer.address)
-                    .map(|a| a.to_string()),
+                address: address.map(|a| a.to_string()),
                 has_access_code: printer.access_code.is_some(),
                 already_added: known.contains(&printer.serial.0),
                 serial: printer.serial.0,
             }
         })
-        .collect())
+        .collect();
+    *import.0.lock().unwrap() = resolved;
+    Ok(views)
 }
+
+/// Where the last [`import_studio`] run placed each Studio printer, by serial.
+///
+/// [`add_studio_printer`] dials only an address recorded here, never one the
+/// webview supplies. The access code is Studio's, not the user's typing, so
+/// the backend — not the caller — has to decide where it is sent; otherwise
+/// anything able to invoke commands could pair a real serial's code with an
+/// address of its choosing and have TOFU pin that endpoint on first use.
+#[derive(Default)]
+pub struct StudioImport(Mutex<HashMap<String, IpAddr>>);
 
 /// Add a printer using the access code Bambu Studio holds for it, so the user
 /// does not have to look it up on the printer's screen.
+///
+/// The address is the one the preceding [`import_studio`] resolved; a printer
+/// it could not place has to go through the manual form instead.
 #[tauri::command]
 pub fn add_studio_printer(
     app: AppHandle,
     state: State<'_, AppState>,
+    import: State<'_, StudioImport>,
     serial: String,
-    address: String,
     nickname: Option<String>,
 ) -> Result<(), String> {
+    let address = import
+        .0
+        .lock()
+        .unwrap()
+        .get(&serial)
+        .copied()
+        .ok_or_else(|| format!("{serial} has no known address; import from Bambu Studio again"))?;
     let access_code = read_studio_config(&studio_config_path(&app)?)
         .map_err(|e| e.to_string())?
         .into_iter()
         .find(|p| p.serial.0 == serial)
         .and_then(|p| p.access_code)
         .ok_or_else(|| format!("Bambu Studio has no access code for {serial}"))?;
-    add_printer(state, serial, address, access_code, nickname)
+    add_printer(state, serial, address.to_string(), access_code, nickname)
 }
 
 /// `BambuStudio.conf` in Studio's own config directory. The platform's config
