@@ -128,6 +128,7 @@ fn main() {
             commands::get_settings,
             commands::set_settings,
             commands::import_studio,
+            commands::add_studio_printer,
         ])
         .setup(move |app| {
             // Captured by value; rebound `mut` so the stored-locale override
@@ -167,6 +168,7 @@ fn main() {
             let tray = tray::install(app, &localiser)?;
             app.manage(tray);
             app.manage(localiser);
+            app.manage(commands::StudioImport::default());
 
             // The Rust -> frontend event bridge. Rust owns ALL printer state —
             // discovery (`pandaspy-discovery`), the connection (`pandaspy-client`)

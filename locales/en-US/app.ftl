@@ -181,6 +181,8 @@ add-printer-studio-import = Import from Bambu Studio
 add-printer-studio-importing = Looking for Bambu Studio printers…
 add-printer-studio-empty = No printers found in Bambu Studio yet.
 add-printer-studio-use = Use
+add-printer-studio-add = Add
+add-printer-studio-not-found = Not found on this network
 
 ## Certificate trust prompt
 

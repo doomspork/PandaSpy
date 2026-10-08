@@ -11,6 +11,9 @@
 //! * **Pins** — certificate fingerprints for trust-on-first-use.
 //!   ([`CertPinStore`])
 //!
+//! Plus one read-only import: printers already configured in Bambu Studio
+//! ([`read_studio_config`]).
+//!
 //! Every persistent store takes its path by injection so `src-tauri` owns the
 //! platform's directory conventions and this crate stays testable without one.
 //!
@@ -35,6 +38,7 @@ mod encrypted;
 mod error;
 mod pins;
 mod secrets;
+mod studio;
 
 #[cfg(test)]
 mod testutil;
@@ -47,3 +51,4 @@ pub use secrets::{
     KEYRING_SERVICE, KeyringSecrets, SecretBackend, SecretStore, default_backend,
     keyring_available, os_keyring_name,
 };
+pub use studio::{StudioPrinter, parse_studio_config, read_studio_config};

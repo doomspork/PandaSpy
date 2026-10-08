@@ -149,9 +149,15 @@ export interface SettingsView {
 }
 
 export interface StudioPrinterView {
-	serial: string | null;
+	serial: string;
+	/** From discovery — Studio's config does not name printers. */
 	name: string | null;
+	model: string | null;
+	/** Where discovery found it, else the address Studio last recorded. */
 	address: string | null;
+	/** Studio holds an access code; the code itself stays on the Rust side. */
+	hasAccessCode: boolean;
+	alreadyAdded: boolean;
 }
 
 export interface Diagnostics {
@@ -215,13 +221,20 @@ export function setSettings(args: {
 }
 
 /**
- * Best-effort import of printers already configured in Bambu Studio.
- *
- * Returns `[]` for now — parsing Studio's on-disk list is gated on a recorded
- * fixture (see `commands.rs`), so the affordance is wired but finds nothing yet.
+ * List the printers configured in Bambu Studio, with addresses filled in from
+ * a discovery run. Takes a few seconds for that reason.
  */
 export function importStudio(): Promise<StudioPrinterView[]> {
 	return invoke('import_studio');
+}
+
+/**
+ * Add a Studio printer using the access code Studio holds for it, at the
+ * address the preceding `importStudio()` resolved — the backend never takes an
+ * address from the caller for a code it is holding.
+ */
+export function addStudioPrinter(args: { serial: string; nickname: string | null }): Promise<void> {
+	return invoke('add_studio_printer', args);
 }
 
 /** What the app can tell you about itself (version, locales, secret backend). */

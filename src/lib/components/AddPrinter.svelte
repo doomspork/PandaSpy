@@ -3,6 +3,7 @@
 	import Icon from './Icon.svelte';
 	import {
 		addPrinter,
+		addStudioPrinter,
 		discoverPrinters,
 		importStudio,
 		type DiscoveredView,
@@ -34,6 +35,7 @@
 	let importing = $state(false);
 	let studioResults = $state<StudioPrinterView[] | null>(null);
 	let studioError = $state<string | null>(null);
+	let addingSerial = $state<string | null>(null);
 
 	// Manual form — also where "use this printer" from the other two tabs lands,
 	// so the user only has to type the access code.
@@ -68,7 +70,15 @@
 		}
 	}
 
+	// Prefilling a different printer must not carry over a code typed for the
+	// last one — tabs do not remount, so the form state would otherwise survive.
+	function clearCredential() {
+		accessCode = '';
+		formError = null;
+	}
+
 	function useDiscovered(found: DiscoveredView) {
+		clearCredential();
 		serial = found.serial ?? '';
 		address = found.address;
 		nickname = found.name ?? '';
@@ -76,10 +86,27 @@
 	}
 
 	function useStudio(printer: StudioPrinterView) {
-		serial = printer.serial ?? '';
+		clearCredential();
+		serial = printer.serial;
 		address = printer.address ?? '';
 		nickname = printer.name ?? '';
 		tab = 'manual';
+	}
+
+	// One tap when Studio has both halves (address + access code); otherwise
+	// `useStudio` drops into the manual form for the missing piece.
+	async function addFromStudio(printer: StudioPrinterView) {
+		if (!printer.address) return;
+		addingSerial = printer.serial;
+		studioError = null;
+		try {
+			await addStudioPrinter({ serial: printer.serial, nickname: printer.name });
+			onDone(printer.serial);
+		} catch (err) {
+			studioError = String(err);
+		} finally {
+			addingSerial = null;
+		}
 	}
 
 	async function submit(event: SubmitEvent) {
@@ -214,20 +241,33 @@
 			</div>
 			{#if studioError}
 				<p class="error">{studioError}</p>
-			{:else if importing}
+			{/if}
+			{#if importing}
 				<p class="muted">{t('add-printer-studio-importing')}</p>
 			{:else if studioResults}
 				{#if studioResults.length > 0}
 					<ul class="found-list">
-						{#each studioResults as sp, i (sp.serial ?? i)}
+						{#each studioResults as sp (sp.serial)}
 							<li>
 								<div class="found-main">
-									<strong>{sp.name ?? sp.serial ?? sp.address}</strong>
-									{#if sp.address}<span class="muted">{sp.address}</span>{/if}
+									<strong>{sp.name ?? sp.model ?? sp.serial}</strong>
+									<span class="muted">{sp.address ?? t('add-printer-studio-not-found')}</span>
 								</div>
-								<button class="btn" onclick={() => useStudio(sp)}
-									>{t('add-printer-studio-use')}</button
-								>
+								{#if sp.alreadyAdded}
+									<span class="muted">{t('add-printer-already-added')}</span>
+								{:else if sp.hasAccessCode && sp.address}
+									<button
+										class="btn primary"
+										onclick={() => addFromStudio(sp)}
+										disabled={addingSerial !== null}
+									>
+										{t('add-printer-studio-add')}
+									</button>
+								{:else}
+									<button class="btn" onclick={() => useStudio(sp)}
+										>{t('add-printer-studio-use')}</button
+									>
+								{/if}
 							</li>
 						{/each}
 					</ul>
