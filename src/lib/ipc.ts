@@ -94,7 +94,10 @@ export interface PrinterSnapshot {
 /** One printer as the list renders it. */
 export interface PrinterView {
 	serial: string;
+	/** A name the user typed. Shown first when present. */
 	nickname: string | null;
+	/** The name the printer announces, kept fresh by discovery. */
+	deviceName: string | null;
 	model: string | null;
 	address: string | null;
 	connection: ConnectionView;
@@ -184,7 +187,10 @@ export function addPrinter(args: {
 	serial: string;
 	address: string;
 	accessCode: string;
+	/** Only a name the user typed — never one discovery supplied. */
 	nickname?: string | null;
+	/** What discovery heard the printer call itself. */
+	deviceName?: string | null;
 }): Promise<void> {
 	return invoke('add_printer', args);
 }
@@ -233,7 +239,7 @@ export function importStudio(): Promise<StudioPrinterView[]> {
  * address the preceding `importStudio()` resolved — the backend never takes an
  * address from the caller for a code it is holding.
  */
-export function addStudioPrinter(args: { serial: string; nickname: string | null }): Promise<void> {
+export function addStudioPrinter(args: { serial: string }): Promise<void> {
 	return invoke('add_studio_printer', args);
 }
 

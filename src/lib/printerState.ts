@@ -111,5 +111,5 @@ export function jobFraction(printer: PrinterView): number | null {
 }
 
 export function displayName(printer: PrinterView): string {
-	return printer.nickname || printer.model || printer.serial;
+	return printer.nickname || printer.deviceName || printer.model || printer.serial;
 }
