@@ -1,0 +1,56 @@
+---
+source: crates/pandaspy-proto/tests/golden.rs
+expression: info
+input_file: fixtures/reports/a1-get-version.json
+---
+{
+  "command": "get_version",
+  "sequence_id": "0",
+  "module": [
+    {
+      "name": "ota",
+      "sw_ver": "01.08.01.00",
+      "hw_ver": "OTA",
+      "sn": "00M09A000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "Bambu Lab A1",
+      "flag": 3
+    },
+    {
+      "name": "esp32",
+      "sw_ver": "01.16.33.15",
+      "hw_ver": "AP05",
+      "sn": "00M09A000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "",
+      "flag": 0
+    },
+    {
+      "name": "mc",
+      "sw_ver": "00.01.30.58",
+      "hw_ver": "MC02",
+      "sn": "000000000000000",
+      "loader_ver": "00.00.00.32",
+      "product_name": "",
+      "flag": 0
+    },
+    {
+      "name": "th",
+      "sw_ver": "00.01.07.70",
+      "hw_ver": "TH01",
+      "sn": "000000000000000",
+      "loader_ver": "00.00.00.26",
+      "product_name": "",
+      "flag": 0
+    },
+    {
+      "name": "ams_f1/0",
+      "sw_ver": "00.00.08.15",
+      "hw_ver": "AMS_F102",
+      "sn": "000000000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "AMS Lite",
+      "flag": 0
+    }
+  ]
+}

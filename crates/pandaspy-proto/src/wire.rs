@@ -215,6 +215,16 @@ impl InfoReport {
         self.module("ota").and_then(|m| m.sw_ver.as_deref())
     }
 
+    /// The printer's marketing name (`Bambu Lab A1`), as the `ota` module
+    /// reports it. Firmware that predates the field, or sends it empty,
+    /// yields `None`.
+    #[must_use]
+    pub fn product_name(&self) -> Option<&str> {
+        self.module("ota")
+            .and_then(|m| m.product_name.as_deref())
+            .filter(|name| !name.is_empty())
+    }
+
     /// The device serial, as reported by the `ota` module (falling back to
     /// any module that carries one).
     #[must_use]
@@ -241,6 +251,9 @@ pub struct ModuleInfo {
     pub hw_ver: Option<String>,
     pub sn: Option<String>,
     pub loader_ver: Option<String>,
+    /// Marketing name, on the modules that are products in their own right
+    /// (`Bambu Lab A1` on `ota`, `AMS Lite` on the AMS); empty elsewhere.
+    pub product_name: Option<String>,
     #[serde(deserialize_with = "de::opt_i64")]
     pub flag: Option<i64>,
 }

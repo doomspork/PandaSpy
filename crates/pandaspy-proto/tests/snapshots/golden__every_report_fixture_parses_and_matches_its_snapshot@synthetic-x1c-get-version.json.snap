@@ -13,6 +13,7 @@ input_file: fixtures/reports/synthetic-x1c-get-version.json
       "hw_ver": "",
       "sn": "00M09A000000000",
       "loader_ver": null,
+      "product_name": null,
       "flag": null
     },
     {
@@ -21,6 +22,7 @@ input_file: fixtures/reports/synthetic-x1c-get-version.json
       "hw_ver": "AP04",
       "sn": "00000000000000",
       "loader_ver": null,
+      "product_name": null,
       "flag": null
     },
     {
@@ -29,6 +31,7 @@ input_file: fixtures/reports/synthetic-x1c-get-version.json
       "hw_ver": "MC07",
       "sn": "0000000000000000",
       "loader_ver": null,
+      "product_name": null,
       "flag": null
     },
     {
@@ -37,6 +40,7 @@ input_file: fixtures/reports/synthetic-x1c-get-version.json
       "hw_ver": "AMS08",
       "sn": "00000000000000000",
       "loader_ver": null,
+      "product_name": null,
       "flag": null
     }
   ]
