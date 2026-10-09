@@ -64,6 +64,7 @@ pub async fn discover_printers(state: State<'_, AppState>) -> Result<DiscoveryRe
     let probe = Arc::new(net::TlsCertProbe::new());
     let interfaces = net::SystemInterfaces;
     let outcome = discover(&stack, probe, &interfaces, &DiscoveryOptions::default()).await;
+    state.observe_names(heard_names(&outcome.printers));
 
     let printers = outcome
         .printers
@@ -98,8 +99,20 @@ impl DiscoveredView {
     }
 }
 
+/// The `(serial, name)` pairs a discovery run heard, for
+/// [`AppState::observe_names`].
+pub fn heard_names(found: &[DiscoveredPrinter]) -> impl Iterator<Item = (&str, &str)> {
+    found
+        .iter()
+        .filter_map(|p| Some((p.serial.as_ref()?.0.as_str(), p.name.as_deref()?)))
+}
+
 /// Add a printer and bring its session up. `accessCode` is written to the secret
 /// store and never round-trips back to the UI.
+///
+/// `nickname` is only a name the user typed; `deviceName` is what discovery
+/// heard the printer call itself. Kept apart so that a later rename on the
+/// printer still reaches the UI.
 #[tauri::command]
 pub fn add_printer(
     state: State<'_, AppState>,
@@ -107,6 +120,7 @@ pub fn add_printer(
     address: String,
     access_code: String,
     nickname: Option<String>,
+    device_name: Option<String>,
 ) -> Result<(), String> {
     if serial.trim().is_empty() {
         return Err("serial must not be empty".to_owned());
@@ -123,7 +137,13 @@ pub fn add_printer(
     if address.parse::<std::net::IpAddr>().is_err() {
         return Err("address must be a valid IP address".to_owned());
     }
-    state.add_printer(serial, address, access_code, normalise(nickname))
+    state.add_printer(
+        serial,
+        address,
+        access_code,
+        normalise(nickname),
+        normalise(device_name),
+    )
 }
 
 /// Remove a printer entirely: stop its session, forget its secret and pin.
@@ -253,6 +273,7 @@ pub async fn import_studio(
     let found = discover(&stack, probe, &interfaces, &options)
         .await
         .printers;
+    state.observe_names(heard_names(&found));
 
     let known = state.known_serials();
     let mut resolved = HashMap::new();
@@ -264,7 +285,10 @@ pub async fn import_studio(
                 .find(|d| d.serial.as_ref() == Some(&printer.serial));
             let address = seen.map(|d| d.address).or(printer.address);
             if let Some(address) = address {
-                resolved.insert(printer.serial.0.clone(), address);
+                resolved.insert(
+                    printer.serial.0.clone(),
+                    (address, seen.and_then(|d| d.name.clone())),
+                );
             }
             StudioPrinterView {
                 name: seen.and_then(|d| d.name.clone()),
@@ -282,7 +306,8 @@ pub async fn import_studio(
     Ok(views)
 }
 
-/// Where the last [`import_studio`] run placed each Studio printer, by serial.
+/// Where the last [`import_studio`] run placed each Studio printer, by serial,
+/// and the name it heard the printer announce.
 ///
 /// [`add_studio_printer`] dials only an address recorded here, never one the
 /// webview supplies. The access code is Studio's, not the user's typing, so
@@ -290,7 +315,7 @@ pub async fn import_studio(
 /// anything able to invoke commands could pair a real serial's code with an
 /// address of its choosing and have TOFU pin that endpoint on first use.
 #[derive(Default)]
-pub struct StudioImport(Mutex<HashMap<String, IpAddr>>);
+pub struct StudioImport(Mutex<HashMap<String, (IpAddr, Option<String>)>>);
 
 /// Add a printer using the access code Bambu Studio holds for it, so the user
 /// does not have to look it up on the printer's screen.
@@ -303,14 +328,13 @@ pub fn add_studio_printer(
     state: State<'_, AppState>,
     import: State<'_, StudioImport>,
     serial: String,
-    nickname: Option<String>,
 ) -> Result<(), String> {
-    let address = import
+    let (address, device_name) = import
         .0
         .lock()
         .unwrap()
         .get(&serial)
-        .copied()
+        .cloned()
         .ok_or_else(|| format!("{serial} has no known address; import from Bambu Studio again"))?;
     let access_code = read_studio_config(&studio_config_path(&app)?)
         .map_err(|e| e.to_string())?
@@ -318,7 +342,14 @@ pub fn add_studio_printer(
         .find(|p| p.serial.0 == serial)
         .and_then(|p| p.access_code)
         .ok_or_else(|| format!("Bambu Studio has no access code for {serial}"))?;
-    add_printer(state, serial, address.to_string(), access_code, nickname)
+    add_printer(
+        state,
+        serial,
+        address.to_string(),
+        access_code,
+        None,
+        device_name,
+    )
 }
 
 /// `BambuStudio.conf` in Studio's own config directory. The platform's config

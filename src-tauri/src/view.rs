@@ -18,11 +18,25 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 pub struct PrinterView {
     pub serial: String,
+    /// A name the user typed. Shown first when present.
     pub nickname: Option<String>,
+    /// The name the printer announces, kept fresh by discovery.
+    pub device_name: Option<String>,
     pub model: Option<String>,
     pub address: Option<String>,
     pub connection: ConnectionView,
     pub state: Option<PrinterSnapshot>,
+}
+
+/// The model as the UI shows it, from `get_version`'s product name: `Bambu
+/// Lab A1` becomes `A1`. The brand is the same on every printer PandaSpy can
+/// talk to, so it is noise next to a model name.
+#[must_use]
+pub fn model_label(product_name: &str) -> String {
+    let name = product_name.trim();
+    name.strip_prefix("Bambu Lab ")
+        .map_or(name, str::trim)
+        .to_owned()
 }
 
 /// The connection lifecycle, flattened for the UI: a stable `status` string and
@@ -303,6 +317,13 @@ fn ams_kind(kind: pandaspy_proto::AmsUnitType) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_model_label_drops_the_brand_but_keeps_anything_else() {
+        assert_eq!(model_label("Bambu Lab A1"), "A1");
+        assert_eq!(model_label(" Bambu Lab X1 Carbon "), "X1 Carbon");
+        assert_eq!(model_label("Some Other Printer"), "Some Other Printer");
+    }
 
     #[test]
     fn a_running_printer_maps_to_a_clean_snapshot() {

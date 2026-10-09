@@ -10,11 +10,13 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use pandaspy_client::{
     Backoff, CertificateFingerprint, Credentials, EqualJitter, PinStore, PinStoreError,
     PrinterEndpoint, SessionConfig, SessionEvent, SessionSpec, TlsTransport, supervise,
 };
+use pandaspy_discovery::{DiscoveryOptions, ProbePolicy, discover, net};
 use pandaspy_proto::{DeviceSerial, PrinterState};
 use pandaspy_store::{
     CertPinStore, Config, ConfigStore, EncryptedFileSecrets, FileConfigStore, KeyringSecrets,
@@ -23,7 +25,8 @@ use pandaspy_store::{
 use tauri::{AppHandle, Emitter};
 use tokio::sync::watch;
 
-use crate::view::{ConnectionView, PrinterSnapshot, PrinterView};
+use crate::commands::heard_names;
+use crate::view::{ConnectionView, PrinterSnapshot, PrinterView, model_label};
 
 /// Tauri event names. Kept as constants so the emitter and `ipc.ts` cannot
 /// drift apart silently.
@@ -61,6 +64,8 @@ pub struct AppState {
 struct PrinterHandle {
     connection: ConnectionView,
     state: Option<PrinterState>,
+    /// From the session's `get_version` reply; asked for on every connect.
+    model: Option<String>,
     shutdown: watch::Sender<bool>,
     /// Which supervisor generation owns this entry. A forwarder only mutates the
     /// handle when its captured generation still matches, so a stopped-then-
@@ -76,13 +81,20 @@ impl AppState {
     pub fn load(app: AppHandle, lang: String) -> Self {
         let base = config_dir(&app);
         let config_store = FileConfigStore::new(base.join("config.json"));
-        let config = config_store.load().unwrap_or_else(|error| {
+        let mut config = config_store.load().unwrap_or_else(|error| {
             // A corrupt config must not wipe the user's printer list on sight —
             // but at startup there is no UI yet to ask. Log and start empty
             // rather than crash; the file is left on disk for inspection.
             eprintln!("[config] {error}; starting with defaults");
             Config::default()
         });
+        if config.migrate()
+            && let Err(error) = config_store.save(&config)
+        {
+            // The migrated config is still used for this run; it is redone,
+            // identically, on the next launch.
+            eprintln!("[config] saving migrated config: {error}");
+        }
 
         let (secrets, backend) = choose_secret_backend(&base);
         let pins = Arc::new(PinStoreAdapter::new(CertPinStore::new(
@@ -127,6 +139,7 @@ impl AppState {
                 Err(_) => self.insert_idle(entry),
             }
         }
+        tauri::async_runtime::spawn(refresh_names(self.app.clone()));
     }
 
     /// Which backend secrets landed in, for the settings screen.
@@ -193,7 +206,12 @@ impl AppState {
         // mapping on a hostile payload cannot poison these mutexes and wedge
         // every other command and forwarder.
         let lang = self.lang.lock().unwrap().clone();
-        let raw: Vec<(PrinterEntry, ConnectionView, Option<PrinterState>)> = {
+        let raw: Vec<(
+            PrinterEntry,
+            ConnectionView,
+            Option<PrinterState>,
+            Option<String>,
+        )> = {
             let printers = self.printers.lock().unwrap();
             let config = self.config.lock().unwrap();
             config
@@ -205,18 +223,20 @@ impl AppState {
                         .map(|h| h.connection.clone())
                         .unwrap_or(ConnectionView::DISCONNECTED);
                     let state = handle.and_then(|h| h.state.clone());
-                    (entry.clone(), connection, state)
+                    let model = handle.and_then(|h| h.model.clone());
+                    (entry.clone(), connection, state, model)
                 })
                 .collect()
         };
 
         raw.into_iter()
-            .filter_map(|(entry, connection, state)| {
+            .filter_map(|(entry, connection, state, model)| {
                 let serial = entry.serial.as_ref()?.0.clone();
                 Some(PrinterView {
                     serial,
                     nickname: entry.nickname.clone(),
-                    model: None,
+                    device_name: entry.device_name.clone(),
+                    model,
                     address: entry.last_address.clone(),
                     connection,
                     state: state
@@ -239,6 +259,7 @@ impl AppState {
         address: String,
         access_code: String,
         nickname: Option<String>,
+        device_name: Option<String>,
     ) -> Result<(), String> {
         self.secrets
             .set_access_code(&serial, &access_code)
@@ -248,6 +269,7 @@ impl AppState {
             serial: Some(DeviceSerial(serial.clone())),
             last_address: Some(address),
             nickname,
+            device_name,
         };
         {
             let mut config = self.config.lock().unwrap();
@@ -261,6 +283,44 @@ impl AppState {
         self.stop_supervisor(&serial);
         self.spawn_supervisor(entry, access_code);
         Ok(())
+    }
+
+    /// Record the names discovery heard, as `(serial, name)` pairs, for the
+    /// printers already configured. A changed name is saved and pushed to the
+    /// window; serials not in the list are ignored.
+    pub fn observe_names<'a>(&self, heard: impl IntoIterator<Item = (&'a str, &'a str)>) {
+        let changed: Vec<String> = {
+            let mut config = self.config.lock().unwrap();
+            let mut changed = Vec::new();
+            for (serial, name) in heard {
+                let name = name.trim();
+                if name.is_empty() {
+                    continue;
+                }
+                let entry = config
+                    .printers
+                    .iter_mut()
+                    .find(|p| p.serial.as_ref().map(|s| s.0.as_str()) == Some(serial));
+                if let Some(entry) = entry
+                    && entry.device_name.as_deref() != Some(name)
+                {
+                    entry.device_name = Some(name.to_owned());
+                    changed.push(serial.to_owned());
+                }
+            }
+            if !changed.is_empty()
+                && let Err(error) = self.config_store.save(&config)
+            {
+                // Still shown for this run; heard again on the next refresh.
+                eprintln!("[config] saving printer names: {error}");
+            }
+            changed
+        };
+        for view in self.printer_views() {
+            if changed.contains(&view.serial) {
+                let _ = self.app.emit(events::PRINTER_UPDATE, view);
+            }
+        }
     }
 
     /// Remove a printer entirely: stop it, and forget its secret and pin.
@@ -344,6 +404,7 @@ impl AppState {
                 PrinterHandle {
                     connection: ConnectionView::DISCONNECTED,
                     state: None,
+                    model: None,
                     shutdown,
                     generation,
                 },
@@ -400,6 +461,7 @@ impl AppState {
             PrinterHandle {
                 connection: ConnectionView::DISCONNECTED,
                 state: None,
+                model: None,
                 shutdown: shutdown_tx,
                 generation,
             },
@@ -425,6 +487,47 @@ impl AppState {
                 forward_event(&app, &serial, generation, event);
             }
         });
+    }
+}
+
+/// How often [`refresh_names`] listens for printers renaming themselves. A
+/// rename is rare and nothing is urgent about it; the add and import screens
+/// refresh names too, on demand.
+const NAME_REFRESH_INTERVAL: Duration = Duration::from_secs(10 * 60);
+
+/// Keep each printer's announced name current: an SSDP-only discovery pass
+/// now and every [`NAME_REFRESH_INTERVAL`], fed to
+/// [`AppState::observe_names`].
+///
+/// SSDP only, never the subnet probe: the probe reads no names. A printer that
+/// only announces passively (the A1) is heard only while nothing else, such
+/// as Bambu Studio, holds UDP 2021 exclusively, so its name can lag until
+/// then. Skipped while no printers are configured, so a fresh install does
+/// not touch the network before the user asks it to.
+async fn refresh_names(app: AppHandle) {
+    use tauri::Manager;
+    let options = DiscoveryOptions {
+        probe: ProbePolicy::Never,
+        ..DiscoveryOptions::default()
+    };
+    loop {
+        let configured = app
+            .try_state::<AppState>()
+            .is_some_and(|state| !state.config.lock().unwrap().printers.is_empty());
+        if configured {
+            let found = discover(
+                &net::TokioSsdpStack::new(),
+                Arc::new(net::TlsCertProbe::new()),
+                &net::SystemInterfaces,
+                &options,
+            )
+            .await
+            .printers;
+            if let Some(state) = app.try_state::<AppState>() {
+                state.observe_names(heard_names(&found));
+            }
+        }
+        tokio::time::sleep(NAME_REFRESH_INTERVAL).await;
     }
 }
 
@@ -457,6 +560,15 @@ fn forward_event(app: &AppHandle, serial: &str, generation: u64, event: SessionE
             match printers.get_mut(serial) {
                 Some(handle) if handle.generation == generation => {
                     handle.state = Some(*printer_state);
+                }
+                _ => return,
+            }
+        }
+        SessionEvent::Info(info) => {
+            let mut printers = state.printers.lock().unwrap();
+            match printers.get_mut(serial) {
+                Some(handle) if handle.generation == generation => {
+                    handle.model = info.product_name().map(model_label);
                 }
                 _ => return,
             }
