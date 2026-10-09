@@ -3049,6 +3049,7 @@ version = "0.1.0"
 dependencies = [
  "if-addrs",
  "insta",
+ "pandaspy-client",
  "pandaspy-proto",
  "rcgen",
  "rustls",
