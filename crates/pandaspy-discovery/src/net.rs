@@ -232,7 +232,7 @@ impl ServerCertVerifier for AcceptAnyCertificate {
         cert: &CertificateDer<'_>,
         dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        rustls::crypto::verify_tls12_signature(
+        pandaspy_client::signature::verify_tls12_signature(
             message,
             cert,
             dss,
@@ -246,7 +246,7 @@ impl ServerCertVerifier for AcceptAnyCertificate {
         cert: &CertificateDer<'_>,
         dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        rustls::crypto::verify_tls13_signature(
+        pandaspy_client::signature::verify_tls13_signature(
             message,
             cert,
             dss,
@@ -459,6 +459,65 @@ mod tests {
             Some("01P00A000000000".to_owned()),
             "the CN of the served certificate is the printer's serial"
         );
+    }
+
+    #[tokio::test]
+    async fn probing_a_v1_certificate_reads_the_serial() {
+        // The A1 serves an X.509 v1 leaf, which webpki refuses to parse; the
+        // probe must still read it rather than report the printer as `NotTls`.
+        let certificate = CertificateDer::from(
+            &include_bytes!("../../pandaspy-client/testdata/v1-leaf.cert.der")[..],
+        );
+        let key = PrivatePkcs8KeyDer::from(
+            &include_bytes!("../../pandaspy-client/testdata/v1-leaf.key.der")[..],
+        );
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let signing_key = provider
+            .key_provider
+            .load_private_key(PrivateKeyDer::Pkcs8(key.clone_key()))
+            .unwrap();
+        let certified = Arc::new(rustls::sign::CertifiedKey::new(
+            vec![certificate.into_owned()],
+            signing_key,
+        ));
+        let config = rustls::ServerConfig::builder_with_provider(provider)
+            .with_protocol_versions(&[&rustls::version::TLS12])
+            .unwrap()
+            .with_no_client_auth()
+            .with_cert_resolver(Arc::new(FixedCert(certified)));
+        let acceptor = TlsAcceptor::from(Arc::new(config));
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let address = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let accepted = acceptor.accept(stream).await;
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            drop(accepted);
+        });
+
+        let outcome = TlsCertProbe::new().probe(address).await;
+        let ProbeOutcome::TlsPeer { cert_der } = outcome else {
+            panic!("expected a certificate, got {outcome:?}");
+        };
+        assert_eq!(
+            serial_from_cert(&cert_der).map(|serial| serial.0),
+            Some("00M09A000000000".to_owned())
+        );
+    }
+
+    /// Serves one fixed certificate. `with_single_cert` would do, except that
+    /// it parses the certificate with webpki — which rejects v1.
+    #[derive(Debug)]
+    struct FixedCert(Arc<rustls::sign::CertifiedKey>);
+
+    impl rustls::server::ResolvesServerCert for FixedCert {
+        fn resolve(
+            &self,
+            _hello: rustls::server::ClientHello<'_>,
+        ) -> Option<Arc<rustls::sign::CertifiedKey>> {
+            Some(Arc::clone(&self.0))
+        }
     }
 
     #[tokio::test]

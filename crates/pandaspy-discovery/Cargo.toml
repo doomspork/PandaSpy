@@ -22,7 +22,10 @@ publish      = false
 # this.
 
 [dependencies]
-pandaspy-proto = { workspace = true }
+pandaspy-proto  = { workspace = true }
+# Only for `signature`: the handshake check shared with the MQTT transport,
+# so the probe and the client cannot disagree about which printers are real.
+pandaspy-client = { workspace = true }
 
 if-addrs     = { workspace = true }
 rustls       = { workspace = true }
