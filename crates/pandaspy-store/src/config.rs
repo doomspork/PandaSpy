@@ -18,8 +18,13 @@ pub struct PrinterEntry {
     /// Last known address. A hint for reconnecting, not a source of truth —
     /// DHCP moves printers around.
     pub last_address: Option<String>,
-    /// User-chosen name, falling back to the model in the UI when absent.
+    /// A name the user typed. Always wins in the UI; never overwritten by
+    /// anything the printer says.
     pub nickname: Option<String>,
+    /// The name the printer last announced (SSDP `DevName`). Refreshed
+    /// whenever discovery hears it, so a rename on the printer shows up here.
+    /// The UI falls back to it, then to the model, when there is no nickname.
+    pub device_name: Option<String>,
 }
 
 /// Everything PandaSpy remembers that is not a secret.
@@ -34,6 +39,37 @@ pub struct Config {
     /// `None` means "follow the operating system".
     pub locale: Option<String>,
     pub launch_at_login: Option<bool>,
+    /// Layout version, for one-way migrations. `None` is a config written
+    /// before versioning; see [`Config::migrate`].
+    pub version: Option<u32>,
+}
+
+impl Config {
+    /// The layout [`migrate`](Self::migrate) brings a config up to.
+    pub const CURRENT_VERSION: u32 = 1;
+
+    /// Bring an older config up to [`Self::CURRENT_VERSION`]. Returns whether
+    /// anything changed, so the caller knows to save.
+    ///
+    /// Version 1 split the printer's own name out of `nickname`. Before it,
+    /// adding a printer copied the name discovery reported into `nickname`, so
+    /// a later rename on the printer never reached the UI. Pre-split nicknames
+    /// are taken to be those copies and become `device_name`, which discovery
+    /// then keeps fresh. A name a user typed by hand in that era is
+    /// indistinguishable from a copy; it is treated as one, and shows until
+    /// the printer next announces a different name.
+    pub fn migrate(&mut self) -> bool {
+        if self.version.unwrap_or(0) >= Self::CURRENT_VERSION {
+            return false;
+        }
+        for entry in &mut self.printers {
+            if entry.device_name.is_none() {
+                entry.device_name = entry.nickname.take();
+            }
+        }
+        self.version = Some(Self::CURRENT_VERSION);
+        true
+    }
 }
 
 /// Load and save [`Config`].
@@ -119,6 +155,28 @@ mod tests {
     }
 
     #[test]
+    fn migration_moves_pre_split_nicknames_to_the_device_name_once() {
+        let mut config: Config = serde_json::from_str(
+            r#"{"printers":[{"serial":"S1","nickname":"3DP-20P-762"},{"serial":"S2"}]}"#,
+        )
+        .unwrap();
+
+        assert!(config.migrate());
+        assert_eq!(config.printers[0].nickname, None);
+        assert_eq!(
+            config.printers[0].device_name.as_deref(),
+            Some("3DP-20P-762")
+        );
+        assert_eq!(config.printers[1].device_name, None);
+        assert_eq!(config.version, Some(Config::CURRENT_VERSION));
+
+        // A nickname set after the split is the user's, and stays put.
+        config.printers[1].nickname = Some("Workshop".to_owned());
+        assert!(!config.migrate());
+        assert_eq!(config.printers[1].nickname.as_deref(), Some("Workshop"));
+    }
+
+    #[test]
     fn an_empty_config_is_the_default_not_a_failure() {
         let config: Config = serde_json::from_str("{}").unwrap();
         assert_eq!(config, Config::default());
@@ -176,9 +234,11 @@ mod tests {
                 serial: Some(DeviceSerial("00M09A000000000".to_owned())),
                 last_address: Some("192.0.2.10".to_owned()),
                 nickname: Some("Workshop".to_owned()),
+                device_name: Some("3DP-00M-000".to_owned()),
             }],
             locale: Some("en-US".to_owned()),
             launch_at_login: Some(true),
+            version: Some(Config::CURRENT_VERSION),
         };
 
         store.save(&config).unwrap();
