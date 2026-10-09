@@ -28,6 +28,7 @@ sha2         = { workspace = true }
 thiserror    = { workspace = true }
 tokio        = { workspace = true, features = ["net", "time", "rt", "sync", "macros", "io-util"] }
 tokio-rustls = { workspace = true }
+x509-parser  = { workspace = true }
 
 [dev-dependencies]
 rcgen      = { workspace = true }

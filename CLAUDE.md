@@ -179,8 +179,11 @@ is generic over its stream, so both are tested over an in-memory duplex.
 
 Trust is on-first-use, because printers serve a self-signed certificate
 generated on the device. There is no chain to validate, so `verify_server_cert`
-accepts any chain — **but the handshake signature is still verified** (it
-delegates to rustls's own `verify_tls1x_signature`). That distinction is
+accepts any chain — **but the handshake signature is still verified**
+(`pandaspy_client::signature`, shared with the discovery probe: rustls's own
+`verify_tls1x_signature` for v3 leaves, the same check against the key read
+directly from the certificate for pre-v3 ones — the A1 serves X.509 v1, which
+webpki refuses to parse). That distinction is
 load-bearing: a certificate is public, so a fingerprint pin proves only the
 bytes; the signature proves the peer holds the private key. Pin + signature
 together are what identify the real printer. Record the fingerprint on first

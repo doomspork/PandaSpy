@@ -32,6 +32,7 @@ mod jitter;
 mod mqtt;
 pub mod pinning;
 mod session;
+pub mod signature;
 mod tls;
 
 pub use backoff::Backoff;
