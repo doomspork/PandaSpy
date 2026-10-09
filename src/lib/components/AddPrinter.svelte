@@ -43,6 +43,10 @@
 	let address = $state('');
 	let accessCode = $state('');
 	let nickname = $state('');
+	// The name discovery heard, if the form was prefilled from it. Sent as the
+	// device name; `nickname` is sent only if the user changed it, so a later
+	// rename on the printer is not shadowed by a copy of its old name.
+	let heard = $state<{ serial: string; name: string | null } | null>(null);
 	let submitting = $state(false);
 	let formError = $state<string | null>(null);
 
@@ -81,6 +85,7 @@
 		clearCredential();
 		serial = found.serial ?? '';
 		address = found.address;
+		heard = { serial: serial, name: found.name };
 		nickname = found.name ?? '';
 		tab = 'manual';
 	}
@@ -89,6 +94,7 @@
 		clearCredential();
 		serial = printer.serial;
 		address = printer.address ?? '';
+		heard = { serial: printer.serial, name: printer.name };
 		nickname = printer.name ?? '';
 		tab = 'manual';
 	}
@@ -100,7 +106,7 @@
 		addingSerial = printer.serial;
 		studioError = null;
 		try {
-			await addStudioPrinter({ serial: printer.serial, nickname: printer.name });
+			await addStudioPrinter({ serial: printer.serial });
 			onDone(printer.serial);
 		} catch (err) {
 			studioError = String(err);
@@ -118,12 +124,16 @@
 		}
 		submitting = true;
 		const trimmedSerial = serial.trim();
+		const typed = nickname.trim();
+		// Only trust the prefill for the printer it came from.
+		const heardName = heard?.serial === trimmedSerial ? heard.name : null;
 		try {
 			await addPrinter({
 				serial: trimmedSerial,
 				address: address.trim(),
 				accessCode,
-				nickname: nickname.trim() || null
+				nickname: typed && typed !== heardName ? typed : null,
+				deviceName: heardName
 			});
 			onDone(trimmedSerial);
 		} catch (err) {

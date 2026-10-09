@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18nRuntime.svelte';
 	import Icon from './Icon.svelte';
 	import { resolveTrust, type PrinterView, type TrustRequired } from '$lib/ipc';
+	import { displayName } from '$lib/printerState';
 
 	let {
 		request,
@@ -41,7 +42,7 @@
 			<h2 id="trust-dialog-title">{t('trust-title')}</h2>
 		</div>
 
-		<p class="printer-name">{printer?.nickname || printer?.model || request.serial}</p>
+		<p class="printer-name">{printer ? displayName(printer) : request.serial}</p>
 		<p class="body">{t('trust-body')}</p>
 
 		<dl class="fingerprints">
