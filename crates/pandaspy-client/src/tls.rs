@@ -159,7 +159,7 @@ impl ServerCertVerifier for AcceptAnyServerCert {
         cert: &CertificateDer<'_>,
         dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        rustls::crypto::verify_tls12_signature(
+        crate::signature::verify_tls12_signature(
             message,
             cert,
             dss,
@@ -173,7 +173,7 @@ impl ServerCertVerifier for AcceptAnyServerCert {
         cert: &CertificateDer<'_>,
         dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        rustls::crypto::verify_tls13_signature(
+        crate::signature::verify_tls13_signature(
             message,
             cert,
             dss,
@@ -329,17 +329,97 @@ mod tests {
         }
     }
 
-    // On why there is no unit test here for "reject a forged handshake
-    // signature": the verifier now delegates to rustls's own audited
-    // `verify_tls12_signature` / `verify_tls13_signature`, and rustls
-    // deliberately makes the attack un-stageable from outside — a mismatched
-    // cert/key `ServerConfig` fails to build (`InconsistentKeys`), and
-    // `DigitallySignedStruct` has no public constructor to forge one. The
-    // positive test below is therefore load-bearing: with a stubbed verifier a
-    // valid handshake succeeds either way, but a *broken* real verifier would
-    // reject the legitimate server's signature and fail that test — so it
-    // proves the real path works. A genuine on-path MITM rejection belongs in a
-    // future integration test with a hand-rolled malicious TLS server.
+    // The forged-signature case is staged by `v1_server`, whose
+    // `CertifiedKey::new` skips the cert/key consistency check that
+    // `with_single_cert` enforces: the real certificate, the wrong key.
+    // `a_v1_certificate_signed_with_another_key_is_refused` covers both TLS
+    // versions; the v3 path is rustls's own `verify_tls1x_signature`.
+
+    /// A server presenting the X.509 v1 leaf in `testdata/` (the A1 serves
+    /// v1, which webpki refuses to parse), signing with `key_der` over
+    /// `version`.
+    ///
+    /// Built with `CertifiedKey::new`, which — unlike `with_single_cert` —
+    /// does not check that the key matches the certificate. That is what lets
+    /// a test stage the impostor: a server showing the real certificate while
+    /// holding a different key.
+    fn v1_server(
+        key_der: &'static [u8],
+        version: &'static rustls::SupportedProtocolVersion,
+    ) -> TlsAcceptor {
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let key = provider
+            .key_provider
+            .load_private_key(PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(key_der)))
+            .unwrap();
+        let certified = rustls::sign::CertifiedKey::new(
+            vec![CertificateDer::from(
+                &include_bytes!("../testdata/v1-leaf.cert.der")[..],
+            )],
+            key,
+        );
+        let config = rustls::ServerConfig::builder_with_provider(provider)
+            .with_protocol_versions(&[version])
+            .unwrap()
+            .with_no_client_auth()
+            .with_cert_resolver(Arc::new(Always(Arc::new(certified))));
+        TlsAcceptor::from(Arc::new(config))
+    }
+
+    #[derive(Debug)]
+    struct Always(Arc<rustls::sign::CertifiedKey>);
+
+    impl rustls::server::ResolvesServerCert for Always {
+        fn resolve(
+            &self,
+            _hello: rustls::server::ClientHello<'_>,
+        ) -> Option<Arc<rustls::sign::CertifiedKey>> {
+            Some(Arc::clone(&self.0))
+        }
+    }
+
+    const V1_KEY: &[u8] = include_bytes!("../testdata/v1-leaf.key.der");
+    const OTHER_KEY: &[u8] = include_bytes!("../testdata/v1-other.key.der");
+    const VERSIONS: [&rustls::SupportedProtocolVersion; 2] =
+        [&rustls::version::TLS12, &rustls::version::TLS13];
+
+    #[tokio::test]
+    async fn a_v1_certificate_connects_over_tls12_and_tls13() {
+        for version in VERSIONS {
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            serve_once(listener, v1_server(V1_KEY, version)).await;
+
+            let mut transport = transport_to(port, Arc::new(MemoryPins::default()));
+            let result = transport.connect().await;
+            assert!(result.is_ok(), "{version:?}: {:?}", result.err());
+        }
+    }
+
+    #[tokio::test]
+    async fn a_v1_certificate_signed_with_another_key_is_refused() {
+        // The impostor: the printer's real (public) certificate, but not its
+        // private key. Even with the pin already matching, the handshake
+        // signature must sink it.
+        let cert = include_bytes!("../testdata/v1-leaf.cert.der");
+        for version in VERSIONS {
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            serve_once(listener, v1_server(OTHER_KEY, version)).await;
+
+            let pins = MemoryPins::default();
+            pins.pin(
+                &DeviceSerial("00M09A000000000".to_owned()),
+                CertificateFingerprint::of_der(cert),
+            )
+            .unwrap();
+            let mut transport = transport_to(port, Arc::new(pins));
+            assert!(
+                matches!(transport.connect().await, Err(TransportError::Tls(_))),
+                "{version:?}: a wrong-key signature must fail the handshake"
+            );
+        }
+    }
 
     #[tokio::test]
     async fn an_unreachable_address_is_reported_as_unreachable() {
