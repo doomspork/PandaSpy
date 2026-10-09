@@ -1,0 +1,60 @@
+{
+  "info": {
+    "command": "get_version",
+    "sequence_id": "0",
+    "module": [
+      {
+        "name": "ota",
+        "sw_ver": "01.08.01.00",
+        "hw_ver": "OTA",
+        "loader_ver": "00.00.00.00",
+        "sn": "00M09A000000000",
+        "product_name": "Bambu Lab A1",
+        "visible": true,
+        "flag": 3
+      },
+      {
+        "name": "esp32",
+        "sw_ver": "01.16.33.15",
+        "hw_ver": "AP05",
+        "loader_ver": "00.00.00.00",
+        "sn": "00M09A000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      },
+      {
+        "name": "mc",
+        "sw_ver": "00.01.30.58",
+        "hw_ver": "MC02",
+        "loader_ver": "00.00.00.32",
+        "sn": "000000000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      },
+      {
+        "name": "th",
+        "sw_ver": "00.01.07.70",
+        "hw_ver": "TH01",
+        "loader_ver": "00.00.00.26",
+        "sn": "000000000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      },
+      {
+        "name": "ams_f1/0",
+        "sw_ver": "00.00.08.15",
+        "hw_ver": "AMS_F102",
+        "loader_ver": "00.00.00.00",
+        "sn": "000000000000000",
+        "product_name": "AMS Lite",
+        "visible": true,
+        "flag": 0
+      }
+    ],
+    "result": "success",
+    "reason": ""
+  }
+}
