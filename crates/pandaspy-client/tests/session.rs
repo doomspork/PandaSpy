@@ -107,9 +107,15 @@ async fn healthy_printer(mut far: DuplexStream, report_payload: Vec<u8>) {
     suback.push(0x00);
     far.write_all(&frame(SUBACK, &suback)).await.unwrap();
 
-    // The client sends an initial pushall request (a PUBLISH); consume it.
-    let (first, _) = read_frame(&mut far).await;
-    assert_eq!(first >> 4, 3, "expected the pushall PUBLISH");
+    // The client asks for a pushall and then for get_version; consume both.
+    for command in ["pushall", "get_version"] {
+        let (first, body) = read_frame(&mut far).await;
+        assert_eq!(first >> 4, 3, "expected the {command} PUBLISH");
+        assert!(
+            String::from_utf8_lossy(&body).contains(command),
+            "expected the {command} request"
+        );
+    }
 
     // Push one report on the report topic.
     let topic = pandaspy_proto::wire::report_topic("00M09A000000000");
@@ -194,7 +200,7 @@ async fn counting_printer(
     far.write_all(&frame(SUBACK, &suback)).await.unwrap();
 
     loop {
-        let (first, _) = read_frame(&mut far).await;
+        let (first, body) = read_frame(&mut far).await;
         match first >> 4 {
             12 => {
                 pings.fetch_add(1, Ordering::SeqCst); // PINGREQ
@@ -202,8 +208,9 @@ async fn counting_printer(
                 // liveness deadline would (correctly) declare the link dead.
                 far.write_all(&frame(PINGRESP, &[])).await.unwrap();
             }
-            3 => {
-                pushalls.fetch_add(1, Ordering::SeqCst); // PUBLISH (pushall request)
+            // PUBLISH: count pushall requests only, not the one get_version.
+            3 if String::from_utf8_lossy(&body).contains("pushall") => {
+                pushalls.fetch_add(1, Ordering::SeqCst);
             }
             _ => {}
         }
@@ -388,6 +395,30 @@ async fn a_healthy_session_connects_subscribes_and_reports() {
 
     // A Report only arrives after CONNECT/SUBSCRIBE succeeded, so the lifecycle
     // necessarily passed through Connected by now.
+    let _ = sup.shutdown_tx.send(true);
+    let _ = tokio::time::timeout(Duration::from_secs(2), sup.handle).await;
+}
+
+#[tokio::test]
+async fn the_get_version_reply_is_surfaced_as_info() {
+    // A real A1 reply (redacted). The session asks for it on connect, and it
+    // must come back as `Info`, not be fed to the state accumulator.
+    let reply = include_bytes!("../../../fixtures/reports/a1-get-version.json").to_vec();
+    let mut sup = run_supervisor(vec![TransportStep::Healthy], reply).await;
+
+    let info = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match sup.rx.recv().await.unwrap() {
+                SessionEvent::Info(info) => break info,
+                SessionEvent::Report(_) => panic!("an info reply is not printer state"),
+                _ => continue,
+            }
+        }
+    })
+    .await
+    .expect("an info event should arrive");
+
+    assert_eq!(info.product_name(), Some("Bambu Lab A1"));
     let _ = sup.shutdown_tx.send(true);
     let _ = tokio::time::timeout(Duration::from_secs(2), sup.handle).await;
 }

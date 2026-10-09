@@ -22,7 +22,9 @@ use std::net::IpAddr;
 use std::time::Duration;
 
 use pandaspy_proto::wire::{self, Request};
-use pandaspy_proto::{DeviceSerial, PrinterState, StateAccumulator};
+use pandaspy_proto::{
+    DeviceSerial, InfoReport, PrinterState, Report, ReportKind, StateAccumulator,
+};
 use serde::Serialize;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc;
@@ -177,6 +179,9 @@ pub enum SessionEvent {
     /// picture — the session owns the [`StateAccumulator`], so subscribers
     /// never see a bare delta.
     Report(Box<PrinterState>),
+    /// The printer's `get_version` reply: firmware modules and the product
+    /// name. Requested once per connection; it does not change mid-session.
+    Info(Box<InfoReport>),
     /// The session is blocked until the user approves a changed certificate.
     /// Deliberately an event and not a prompt: this crate must not know that
     /// dialogs exist.
@@ -309,11 +314,14 @@ where
 
     // A fresh snapshot immediately — deltas that arrived before now are gone.
     let mut sequence = 0_u64;
-    if send_request(&mut stream, &request_topic, Request::Pushall, &mut sequence)
-        .await
-        .is_err()
-    {
-        return SessionOutcome::Ended(FailureReason::ConnectionClosed);
+    // And what the printer *is*: the product name lives only in `get_version`.
+    for request in [Request::Pushall, Request::GetVersion] {
+        if send_request(&mut stream, &request_topic, request, &mut sequence)
+            .await
+            .is_err()
+        {
+            return SessionOutcome::Ended(FailureReason::ConnectionClosed);
+        }
     }
 
     // ── The live loop ───────────────────────────────────────────────────
@@ -417,7 +425,12 @@ where
                     Some(Packet::Publish(Publish { topic, payload })) if topic == report_topic => {
                         // A malformed payload is a firmware surprise, not a
                         // reason to drop the session — skip it and keep going.
-                        if accumulator.apply_payload(&payload).unwrap_or(false)
+                        let Ok(report) = Report::parse(&payload) else { continue };
+                        if *report.kind() == ReportKind::Info {
+                            if let Some(info) = report.info() {
+                                let _ = events.send(SessionEvent::Info(Box::new(info)));
+                            }
+                        } else if accumulator.apply(&report)
                             && let Ok(state) = accumulator.state()
                         {
                             let _ = events.send(SessionEvent::Report(Box::new(state)));
