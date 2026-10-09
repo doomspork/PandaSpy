@@ -10,7 +10,8 @@ use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
 use pandaspy_discovery::{
-    DiscoveredPrinter, DiscoveryOptions, DiscoverySource, DiscoveryVerdict, discover, net,
+    DiscoveredPrinter, DiscoveryOptions, DiscoverySource, DiscoveryVerdict, ProbePolicy, discover,
+    net,
 };
 use pandaspy_store::{SecretBackend, os_keyring_name, read_studio_config};
 use serde::Serialize;
@@ -240,7 +241,16 @@ pub async fn import_studio(
     let stack = net::TokioSsdpStack::new();
     let probe = Arc::new(net::TlsCertProbe::new());
     let interfaces = net::SystemInterfaces;
-    let found = discover(&stack, probe, &interfaces, &DiscoveryOptions::default())
+    // Always probe, even after SSDP hits. Some printers (the A1) answer no
+    // M-SEARCH and only announce passively on UDP 2021 — which Studio, open
+    // for exactly this import, holds exclusively. So one printer answering
+    // SSDP says nothing about the rest, and the default policy would skip
+    // the very probe that finds them.
+    let options = DiscoveryOptions {
+        probe: ProbePolicy::Always,
+        ..DiscoveryOptions::default()
+    };
+    let found = discover(&stack, probe, &interfaces, &options)
         .await
         .printers;
 
