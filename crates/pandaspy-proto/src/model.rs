@@ -110,17 +110,19 @@ impl PrinterModel {
 
 impl From<String> for PrinterModel {
     fn from(raw: String) -> Self {
-        // Product codes first, then the SSDP `DevModel` strings. Matching is
-        // exact on purpose: a fuzzy match that guesses wrong is worse than an
-        // honest Unknown.
+        // Product codes, then the SSDP `DevModel` strings, then `get_version`'s
+        // `product_name` (`fixtures/reports/a1-get-version.json` pins the A1's;
+        // the A1 mini and P1P ones follow the same pattern but are unconfirmed).
+        // Matching is exact on purpose: a fuzzy match that guesses wrong is
+        // worse than an honest Unknown.
         match raw.as_str() {
             "BL-P002" | "3DPrinter-X1" => Self::X1,
             "BL-P001" | "3DPrinter-X1-Carbon" => Self::X1Carbon,
             "C13" => Self::X1E,
-            "C11" => Self::P1P,
+            "C11" | "Bambu Lab P1P" => Self::P1P,
             "C12" => Self::P1S,
-            "N2S" => Self::A1,
-            "N1" => Self::A1Mini,
+            "N2S" | "Bambu Lab A1" => Self::A1,
+            "N1" | "Bambu Lab A1 mini" => Self::A1Mini,
             "O1D" => Self::H2D,
             _ => Self::Unknown(raw),
         }
@@ -156,6 +158,10 @@ mod tests {
         assert_eq!(PrinterModel::from("C12".to_owned()), PrinterModel::P1S);
         assert_eq!(PrinterModel::from("N1".to_owned()), PrinterModel::A1Mini);
         assert_eq!(PrinterModel::from("O1D".to_owned()), PrinterModel::H2D);
+        assert_eq!(
+            PrinterModel::from("Bambu Lab A1".to_owned()),
+            PrinterModel::A1
+        );
     }
 
     #[test]

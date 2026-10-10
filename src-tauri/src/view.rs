@@ -9,7 +9,7 @@
 //! Everything here is `Serialize` in `camelCase`; `src/lib/ipc.ts` mirrors it.
 
 use pandaspy_client::{ConnectionState, FailureReason};
-use pandaspy_proto::{ActiveTray, PrinterState};
+use pandaspy_proto::{ActiveTray, PrinterModel, PrinterState};
 use serde::Serialize;
 
 /// One printer as the UI lists it: identity, where it is, how the connection is
@@ -173,9 +173,10 @@ pub struct HmsView {
 }
 
 impl PrinterSnapshot {
-    /// Derive the snapshot, resolving HMS/error text in `lang`.
+    /// Derive the snapshot, resolving HMS/error text in `lang`. `model` comes
+    /// from `get_version` and gates readings an open printer reports anyway.
     #[must_use]
-    pub fn from_state(state: &PrinterState, lang: &str) -> Self {
+    pub fn from_state(state: &PrinterState, model: Option<&PrinterModel>, lang: &str) -> Self {
         Self {
             status: state.status().map(status_key),
             stage: state
@@ -190,7 +191,7 @@ impl PrinterSnapshot {
             nozzle_target: state.nozzle_target_temper,
             bed_temp: state.bed_temper,
             bed_target: state.bed_target_temper,
-            chamber_temp: state.chamber_temper,
+            chamber_temp: state.chamber_temp(model),
             task_name: state.subtask_name.clone(),
             ams: state
                 .ams
@@ -334,7 +335,7 @@ mod tests {
         )
         .unwrap();
 
-        let snap = PrinterSnapshot::from_state(&state, "en-US");
+        let snap = PrinterSnapshot::from_state(&state, None, "en-US");
         assert_eq!(snap.status, Some("printing"));
         assert_eq!(snap.stage.as_deref(), Some("printing"));
         assert_eq!(snap.progress_percent, Some(42));
@@ -358,7 +359,7 @@ mod tests {
         )
         .unwrap();
 
-        let snap = PrinterSnapshot::from_state(&state, "en-US");
+        let snap = PrinterSnapshot::from_state(&state, None, "en-US");
         assert_eq!(snap.ams.len(), 1);
         let trays = &snap.ams[0].trays;
         assert_eq!(trays.len(), 3, "the empty slot keeps its position");
@@ -378,13 +379,13 @@ mod tests {
         let state: PrinterState =
             serde_json::from_str(r#"{"hms":[{"attr":50332160,"code":65537}]}"#).unwrap();
 
-        let english = PrinterSnapshot::from_state(&state, "en-US");
+        let english = PrinterSnapshot::from_state(&state, None, "en-US");
         assert_eq!(english.hms.len(), 1);
         assert_eq!(english.hms[0].severity, Some("fatal"));
         assert!(english.hms[0].text.as_ref().unwrap().contains("nozzle"));
         assert!(english.hms[0].code.as_deref() == Some("0300_0200_0001_0001"));
 
-        let polish = PrinterSnapshot::from_state(&state, "pl-PL");
+        let polish = PrinterSnapshot::from_state(&state, None, "pl-PL");
         assert!(polish.hms[0].text.as_ref().unwrap().contains("dyszy"));
     }
 

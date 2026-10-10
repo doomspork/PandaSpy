@@ -31,6 +31,7 @@ use crate::extruder::Device;
 use crate::hms::HmsEntry;
 use crate::job::{GcodeState, PrintStage, PrinterStatus};
 use crate::merge::deep_merge;
+use crate::model::PrinterModel;
 use crate::wire::{Report, ReportKind};
 use crate::{ProtoError, de};
 
@@ -128,7 +129,9 @@ pub struct PrinterState {
     pub bed_temper: Option<f64>,
     #[serde(deserialize_with = "de::opt_f64")]
     pub bed_target_temper: Option<f64>,
-    /// Only enclosed models report this; `None` on an A1 is normal.
+    /// The older chamber field. The A1 sends a constant placeholder here
+    /// despite having no chamber, and the X2D omits it in favour of
+    /// [`Device::ctc`] — read [`PrinterState::chamber_temp`] instead.
     #[serde(deserialize_with = "de::opt_f64")]
     pub chamber_temper: Option<f64>,
 
@@ -193,7 +196,8 @@ pub struct PrinterState {
     /// The external spool holder ("virtual tray").
     pub vt_tray: Option<Tray>,
     /// Hardware block; on dual-nozzle printers it carries the authoritative
-    /// feed — see [`crate::extruder`].
+    /// feed — see [`crate::extruder`] — and on X2D-era firmware the chamber
+    /// sensor.
     pub device: Option<Device>,
 
     // ─── Health ──────────────────────────────────────────────────────────
@@ -269,6 +273,24 @@ impl PrinterState {
             ActiveTray::ExternalSpool => self.vt_tray.as_ref(),
             ActiveTray::None | ActiveTray::Unknown(_) => None,
         }
+    }
+
+    /// Chamber temperature, for models that have a chamber.
+    ///
+    /// Prefers `device.ctc` (X2D-era firmware) over the legacy
+    /// `chamber_temper`, and returns `None` for a model known to be open:
+    /// the A1 reports a fixed `chamber_temper` of 5 with no chamber at all
+    /// (`fixtures/reports/a1-idle.json`). An unrecognised model is trusted,
+    /// since hiding a real reading is worse than showing an odd one.
+    #[must_use]
+    pub fn chamber_temp(&self, model: Option<&PrinterModel>) -> Option<f64> {
+        if model.and_then(PrinterModel::has_chamber) == Some(false) {
+            return None;
+        }
+        self.device
+            .as_ref()
+            .and_then(Device::chamber_temp)
+            .or(self.chamber_temper)
     }
 
     /// Human-readable text for `print_error`, from the embedded table.
@@ -525,5 +547,40 @@ mod tests {
         assert_eq!(fan_gear_to_percent(9), 60);
         assert_eq!(fan_gear_to_percent(70), 70, "already a percent");
         assert_eq!(fan_gear_to_percent(900), 100, "garbage clamps");
+    }
+
+    fn fixture_state(json: &str) -> PrinterState {
+        let envelope: Value = serde_json::from_str(json).unwrap();
+        serde_json::from_value(envelope["print"].clone()).unwrap()
+    }
+
+    #[test]
+    fn x2d_chamber_comes_from_the_device_block() {
+        // The X2D sends no `chamber_temper`; its chamber sensor is
+        // `device.ctc.info.temp`, packed like the bed's.
+        let state = fixture_state(include_str!(
+            "../../../fixtures/reports/x2d-printing-two-ams.json"
+        ));
+        assert_eq!(state.chamber_temper, None);
+        assert_eq!(state.chamber_temp(None), Some(36.0));
+    }
+
+    #[test]
+    fn an_open_printer_has_no_chamber_whatever_it_reports() {
+        // A real A1 sends `chamber_temper: 5`. It has no chamber.
+        let state = fixture_state(include_str!("../../../fixtures/reports/a1-idle.json"));
+        assert_eq!(state.chamber_temper, Some(5.0));
+        assert_eq!(state.chamber_temp(Some(&PrinterModel::A1)), None);
+        assert_eq!(
+            state.chamber_temp(None),
+            Some(5.0),
+            "an unidentified model is taken at its word"
+        );
+    }
+
+    #[test]
+    fn packed_temperatures_keep_the_low_half() {
+        assert_eq!(crate::extruder::unpack_temp(0x0046_0046), 70);
+        assert_eq!(crate::extruder::unpack_temp(36), 36);
     }
 }

@@ -1,6 +1,5 @@
 ---
 source: crates/pandaspy-proto/tests/golden.rs
-assertion_line: 36
 expression: state
 input_file: fixtures/reports/x2d-dual-extruder-feeding-ams2.json
 ---
@@ -255,6 +254,11 @@ input_file: fixtures/reports/x2d-dual-extruder-feeding-ams2.json
         }
       ],
       "state": 33042
+    },
+    "ctc": {
+      "info": {
+        "temp": 36
+      }
     }
   },
   "hms": [

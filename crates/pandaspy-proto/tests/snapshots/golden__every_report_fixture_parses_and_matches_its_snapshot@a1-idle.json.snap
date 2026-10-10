@@ -1,0 +1,177 @@
+---
+source: crates/pandaspy-proto/tests/golden.rs
+expression: state
+input_file: fixtures/reports/a1-idle.json
+---
+{
+  "nozzle_temper": 139.6875,
+  "nozzle_target_temper": 0.0,
+  "bed_temper": 44.71875,
+  "bed_target_temper": 0.0,
+  "chamber_temper": 5.0,
+  "cooling_fan_speed": 0,
+  "big_fan1_speed": 0,
+  "big_fan2_speed": 0,
+  "heatbreak_fan_speed": 8,
+  "gcode_state": "IDLE",
+  "gcode_file": "",
+  "subtask_name": "redacted",
+  "mc_percent": 0,
+  "mc_remaining_time": 89,
+  "layer_num": 0,
+  "total_layer_num": 80,
+  "stg_cur": 255,
+  "print_type": "idle",
+  "print_error": 0,
+  "spd_lvl": 2,
+  "spd_mag": 100,
+  "nozzle_diameter": "0.4",
+  "nozzle_type": "stainless_steel",
+  "wifi_signal": "-40dBm",
+  "sdcard": true,
+  "home_flag": 847201680,
+  "lights_report": [
+    {
+      "node": "chamber_light",
+      "mode": "off"
+    }
+  ],
+  "ams": {
+    "ams": [
+      {
+        "id": 0,
+        "humidity": 5,
+        "humidity_raw": 0,
+        "temp": 0.0,
+        "type": null,
+        "dry_time": 0,
+        "tray": [
+          {
+            "id": 0,
+            "tray_type": "PLA",
+            "tray_color": "BECF00FF",
+            "cols": [
+              "BECF00FF"
+            ],
+            "tray_info_idx": "GFA00",
+            "tray_id_name": "A00-G3",
+            "tray_sub_brands": "PLA Basic",
+            "remain": 100,
+            "k": 0.01999999955296,
+            "n": 1.0,
+            "nozzle_temp_min": 190.0,
+            "nozzle_temp_max": 230.0,
+            "bed_temp": 0.0,
+            "tray_diameter": 1.75,
+            "tray_weight": 1000.0,
+            "tag_uid": "0000000000000000",
+            "tray_uuid": "00000000000000000000000000000000"
+          },
+          {
+            "id": 1,
+            "tray_type": "PLA",
+            "tray_color": "000000FF",
+            "cols": [
+              "000000FF"
+            ],
+            "tray_info_idx": "GFA00",
+            "tray_id_name": "A00-K00",
+            "tray_sub_brands": "PLA Basic",
+            "remain": 100,
+            "k": 0.01999999955296,
+            "n": 1.0,
+            "nozzle_temp_min": 190.0,
+            "nozzle_temp_max": 230.0,
+            "bed_temp": 0.0,
+            "tray_diameter": 1.75,
+            "tray_weight": 1000.0,
+            "tag_uid": "0000000000000000",
+            "tray_uuid": "00000000000000000000000000000000"
+          },
+          {
+            "id": 2,
+            "tray_type": "PLA",
+            "tray_color": "F7D959FF",
+            "cols": [
+              "F7D959FF"
+            ],
+            "tray_info_idx": "GFA01",
+            "tray_id_name": "A01-Y2",
+            "tray_sub_brands": "PLA Matte",
+            "remain": 100,
+            "k": 0.01999999955296,
+            "n": 1.0,
+            "nozzle_temp_min": 190.0,
+            "nozzle_temp_max": 230.0,
+            "bed_temp": 0.0,
+            "tray_diameter": 1.75,
+            "tray_weight": 1000.0,
+            "tag_uid": "0000000000000000",
+            "tray_uuid": "00000000000000000000000000000000"
+          },
+          {
+            "id": 3,
+            "tray_type": "PLA",
+            "tray_color": "042F56FF",
+            "cols": [
+              "042F56FF"
+            ],
+            "tray_info_idx": "GFA01",
+            "tray_id_name": "A01-B6",
+            "tray_sub_brands": "PLA Matte",
+            "remain": 100,
+            "k": 0.01999999955296,
+            "n": 1.0,
+            "nozzle_temp_min": 190.0,
+            "nozzle_temp_max": 230.0,
+            "bed_temp": 0.0,
+            "tray_diameter": 1.75,
+            "tray_weight": 1000.0,
+            "tag_uid": "0000000000000000",
+            "tray_uuid": "00000000000000000000000000000000"
+          }
+        ]
+      }
+    ],
+    "ams_exist_bits": 1,
+    "tray_exist_bits": 15,
+    "tray_is_bbl_bits": 15,
+    "tray_read_done_bits": 15,
+    "tray_now": 2,
+    "tray_tar": 2,
+    "tray_pre": 2,
+    "version": 10,
+    "insert_flag": true,
+    "power_on_flag": false
+  },
+  "vt_tray": {
+    "id": 254,
+    "tray_type": "",
+    "tray_color": "00000000",
+    "cols": [],
+    "tray_info_idx": "",
+    "tray_id_name": "",
+    "tray_sub_brands": "",
+    "remain": 0,
+    "k": 0.019999999552965164,
+    "n": 1.0,
+    "nozzle_temp_min": 0.0,
+    "nozzle_temp_max": 0.0,
+    "bed_temp": 0.0,
+    "tray_diameter": 0.0,
+    "tray_weight": 0.0,
+    "tag_uid": "0000000000000000",
+    "tray_uuid": "00000000000000000000000000000000"
+  },
+  "device": null,
+  "hms": [
+    {
+      "attr": 50337792,
+      "code": 65539
+    },
+    {
+      "attr": 83886848,
+      "code": 65538
+    }
+  ]
+}

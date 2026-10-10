@@ -1,6 +1,5 @@
 ---
 source: crates/pandaspy-proto/tests/sequence.rs
-assertion_line: 90
 expression: state
 ---
 {
