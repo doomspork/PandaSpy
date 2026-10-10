@@ -1,5 +1,6 @@
 ---
 source: crates/pandaspy-proto/tests/sequence.rs
+assertion_line: 90
 expression: state
 ---
 {
@@ -154,5 +155,6 @@ expression: state
     "tag_uid": null,
     "tray_uuid": null
   },
+  "device": null,
   "hms": []
 }

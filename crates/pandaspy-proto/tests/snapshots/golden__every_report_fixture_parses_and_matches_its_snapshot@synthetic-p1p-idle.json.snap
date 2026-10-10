@@ -1,5 +1,6 @@
 ---
 source: crates/pandaspy-proto/tests/golden.rs
+assertion_line: 36
 expression: state
 input_file: fixtures/reports/synthetic-p1p-idle.json
 ---
@@ -56,5 +57,6 @@ input_file: fixtures/reports/synthetic-p1p-idle.json
     "tag_uid": null,
     "tray_uuid": null
   },
+  "device": null,
   "hms": []
 }

@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::ams::{ActiveTray, AmsSystem, Tray};
+use crate::extruder::Device;
 use crate::hms::HmsEntry;
 use crate::job::{GcodeState, PrintStage, PrinterStatus};
 use crate::merge::deep_merge;
@@ -191,6 +192,9 @@ pub struct PrinterState {
     pub ams: Option<AmsSystem>,
     /// The external spool holder ("virtual tray").
     pub vt_tray: Option<Tray>,
+    /// Hardware block; on dual-nozzle printers it carries the authoritative
+    /// feed — see [`crate::extruder`].
+    pub device: Option<Device>,
 
     // ─── Health ──────────────────────────────────────────────────────────
     pub hms: Vec<HmsEntry>,
@@ -245,9 +249,16 @@ impl PrinterState {
     }
 
     /// What is feeding the extruder right now.
+    ///
+    /// Dual-nozzle printers report a per-extruder feed whose `ams.tray_now`
+    /// is only a slot number, so the extruder block wins whenever it can
+    /// answer; `tray_now` is the fallback for everything else.
     #[must_use]
     pub fn active_tray(&self) -> Option<ActiveTray> {
-        self.ams.as_ref()?.active_tray()
+        self.device
+            .as_ref()
+            .and_then(|device| device.extruder.as_ref()?.active_tray())
+            .or_else(|| self.ams.as_ref()?.active_tray())
     }
 
     /// The tray behind [`Self::active_tray`], resolved to its filament data.
@@ -476,6 +487,34 @@ mod tests {
         assert_eq!(
             state.active_filament().and_then(|t| t.tray_type.as_deref()),
             Some("ABS")
+        );
+    }
+
+    #[test]
+    fn dual_extruder_feed_comes_from_the_extruder_block_not_tray_now() {
+        // Real X2D capture, printing from the second AMS's slot 3. `tray_now`
+        // says "3" — slot only — which the global decode would place in the
+        // first AMS (where that slot is empty).
+        let payload =
+            include_bytes!("../../../fixtures/reports/x2d-dual-extruder-feeding-ams2.json");
+        let mut acc = StateAccumulator::new();
+        acc.apply_payload(payload).unwrap();
+        let state = acc.state().unwrap();
+
+        assert_eq!(
+            state.ams.as_ref().unwrap().active_tray(),
+            Some(ActiveTray::Slot { unit: 0, slot: 3 }),
+            "the raw tray_now decode is the bug this guards"
+        );
+        assert_eq!(
+            state.active_tray(),
+            Some(ActiveTray::Slot { unit: 1, slot: 3 })
+        );
+        assert_eq!(
+            state
+                .active_filament()
+                .and_then(|t| t.tray_color.as_deref()),
+            Some("F72323FF")
         );
     }
 
