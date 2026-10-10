@@ -1,5 +1,6 @@
 ---
 source: crates/pandaspy-proto/tests/golden.rs
+assertion_line: 36
 expression: state
 input_file: fixtures/reports/synthetic-h2d-ams2pro-ht.json
 ---
@@ -186,6 +187,25 @@ input_file: fixtures/reports/synthetic-h2d-ams2pro-ht.json
     "tray_weight": null,
     "tag_uid": null,
     "tray_uuid": null
+  },
+  "device": {
+    "extruder": {
+      "info": [
+        {
+          "id": 0,
+          "snow": null,
+          "spre": null,
+          "star": null
+        },
+        {
+          "id": 1,
+          "snow": null,
+          "spre": null,
+          "star": null
+        }
+      ],
+      "state": null
+    }
   },
   "hms": []
 }

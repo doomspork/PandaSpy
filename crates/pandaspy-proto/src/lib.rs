@@ -37,6 +37,7 @@
 pub mod ams;
 mod de;
 mod error;
+pub mod extruder;
 pub mod hms;
 pub mod job;
 pub mod merge;
@@ -46,6 +47,7 @@ pub mod wire;
 
 pub use ams::{ActiveTray, AmsSystem, AmsUnit, AmsUnitType, Tray};
 pub use error::ProtoError;
+pub use extruder::{Device, Extruder, ExtruderSystem};
 pub use hms::{HmsEntry, HmsModule, HmsSeverity};
 pub use job::{GcodeState, PrintStage, PrinterStatus};
 pub use model::{DeviceSerial, PrinterModel};

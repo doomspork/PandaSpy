@@ -1,5 +1,6 @@
 ---
 source: crates/pandaspy-proto/tests/golden.rs
+assertion_line: 36
 expression: state
 input_file: fixtures/reports/synthetic-a1mini-ams-lite.json
 ---
@@ -150,5 +151,6 @@ input_file: fixtures/reports/synthetic-a1mini-ams-lite.json
     "tag_uid": null,
     "tray_uuid": null
   },
+  "device": null,
   "hms": []
 }
