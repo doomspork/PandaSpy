@@ -63,36 +63,22 @@ yanked = "deny"
 # advisory has to be a decision someone made, not a line someone pasted to get
 # a green tick.
 #
-# RE-AUDIT EVERY ENTRY WHEN THE TAURI MAJOR OR MINOR IS BUMPED. All 16 arrive
-# through `tauri`, pinned here at tauri 2.11.5 / tauri-utils 2.9.3. Upstream
-# moving the Linux backend off GTK3, or tauri-utils dropping `urlpattern`,
-# retires an entire group at once — and an ignore that outlives its cause is a
+# RE-AUDIT EVERY ENTRY WHEN THE TAURI MAJOR OR MINOR IS BUMPED. All 9 arrive
+# through `tauri` or its plugins, pinned here at tauri 2.11.5 / tauri-utils
+# 2.9.3. Upstream moving off a dependency, or tauri-utils dropping
+# `urlpattern`, retires an entire group at once — and an ignore that outlives its cause is a
 # silenced alarm. cargo-deny helps here: an entry matching nothing is reported
 # as `warning[advisory-not-detected] … no crate matched advisory criteria`. It
 # is only a WARNING, so it will not fail the build — read the warnings after a
 # dependency bump and delete what has gone quiet.
 ignore = [
-  # ── gtk-rs GTK3 bindings (10) ──────────────────────────────────────────────
-  # Pulled in by tauri → tao / wry / tray-icon / muda. The entire gtk-rs 0.18
-  # family was retired upstream when the project moved to GTK4; Tauri v2's Linux
-  # backend is still GTK3, so this is not a dependency PandaSpy selects or can
-  # drop from here. Reached only on the x86_64-unknown-linux-gnu target.
-  { id = "RUSTSEC-2024-0411", reason = "gdkwayland-sys 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0412", reason = "gdk 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0413", reason = "atk 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0414", reason = "gdkx11-sys 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0415", reason = "gtk 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0416", reason = "atk-sys 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0417", reason = "gdkx11 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0418", reason = "gdk-sys 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0419", reason = "gtk3-macros 0.18.2, GTK3 binding via tauri; no successor release" },
-  { id = "RUSTSEC-2024-0420", reason = "gtk-sys 0.18.2, GTK3 binding via tauri; no successor release" },
-
   # ── proc-macro-error (1) ───────────────────────────────────────────────────
-  # Same tree, one level deeper: glib-macros → glib → atk / gtk. Unmaintained
+  # Via the GTK3 tree: glib-macros → glib → atk / gtk. (The gtk-rs 0.18
+  # bindings themselves were ignored here too until RustSec withdrew those
+  # advisories in 2026 when gtk-rs resumed GTK3 development.) Unmaintained
   # because its author became unreachable. It is a proc-macro, so it runs at
   # build time on a developer's or CI machine and no part of it is linked into
-  # the shipped binary. Goes away with the GTK3 group above.
+  # the shipped binary.
   { id = "RUSTSEC-2024-0370", reason = "proc-macro-error 1.0.4, build-time only, via glib-macros in the GTK3 tree" },
 
   # ── rust-unic Unicode crates (5) ───────────────────────────────────────────
@@ -106,6 +92,17 @@ ignore = [
   { id = "RUSTSEC-2025-0081", reason = "unic-char-property 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
   { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
   { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident 0.9.0, via urlpattern → tauri-utils; rust-unic is retired" },
+
+  # ── zbus 5 helper crates (3) ───────────────────────────────────────────────
+  # Pulled in by tauri-plugin-notification → notify-rust and by
+  # tauri-plugin-single-instance, both on zbus 5, on the Linux target only.
+  # zvariant and zbus_names were folded into zbus itself as of zbus 6.0, so the
+  # standalone crates stopped being maintained; the fix is those two plugins
+  # moving to zbus 6, which PandaSpy cannot do from here. Goes away as a group
+  # when they do.
+  { id = "RUSTSEC-2026-0370", reason = "zvariant 5.13.1, via zbus 5 in notify-rust / single-instance; merged into zbus 6" },
+  { id = "RUSTSEC-2026-0371", reason = "zbus_names 4.3.4, via zbus 5 in notify-rust / single-instance; merged into zbus 6" },
+  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive 5.13.1, via zbus 5 in notify-rust / single-instance; merged into zbus 6" },
 ]
 
 [licenses]

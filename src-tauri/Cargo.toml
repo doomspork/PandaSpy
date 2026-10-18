@@ -70,6 +70,12 @@ tokio         = { workspace = true, features = ["rt-multi-thread", "sync", "time
 #                    rather than inherited from upstream's defaults — see
 #                    CLAUDE.md § Known gaps, "Updater is off", for why the
 #                    endpoint/pubkey in tauri.conf.json are still placeholders.
+#                    The `zip` feature is deliberately off: it only adds
+#                    the v1-compatible `.zip` / `.tar.gz` update archives
+#                    (Windows / Linux; macOS always has its tar path), and
+#                    its `zip ^4` carries RUSTSEC-2026-0367..0369, extraction
+#                    escapes that `extract_zip` would reach. v2 updater
+#                    artifacts are the signed installer / AppImage itself.
 #   process          gives the frontend `relaunch()` to restart the app after
 #                    the updater installs, without a custom Tauri command.
 tauri-plugin-autostart       = "2.5.1"
@@ -79,7 +85,6 @@ tauri-plugin-process         = "2.3.1"
 tauri-plugin-single-instance = "2.4.3"
 tauri-plugin-updater         = { version = "2.10.1", default-features = false, features = [
   "rustls-tls",
-  "zip",
 ] }
 
 unic-langid   = { workspace = true }
