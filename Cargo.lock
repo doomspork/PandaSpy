@@ -2981,7 +2981,7 @@ dependencies = [
 
 [[package]]
 name = "pandaspy"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fluent-bundle",
  "include_dir",
@@ -3008,7 +3008,7 @@ dependencies = [
 
 [[package]]
 name = "pandaspy-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "getrandom 0.4.3",
  "pandaspy-proto",
@@ -3025,7 +3025,7 @@ dependencies = [
 
 [[package]]
 name = "pandaspy-discovery"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "if-addrs",
  "insta",
@@ -3043,7 +3043,7 @@ dependencies = [
 
 [[package]]
 name = "pandaspy-proto"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "insta",
  "serde",
@@ -3053,7 +3053,7 @@ dependencies = [
 
 [[package]]
 name = "pandaspy-store"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -6178,7 +6178,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "fluent-syntax",

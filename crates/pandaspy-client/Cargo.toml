@@ -1,6 +1,6 @@
 [package]
 name         = "pandaspy-client"
-version      = "0.1.0"
+version      = "0.2.0"
 description  = "TLS + MQTT session with a Bambu Lab printer: TOFU pinning, reconnect, backoff."
 edition      = { workspace = true }
 rust-version = { workspace = true }

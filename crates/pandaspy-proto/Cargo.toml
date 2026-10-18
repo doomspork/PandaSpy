@@ -1,6 +1,6 @@
 [package]
 name         = "pandaspy-proto"
-version      = "0.1.0"
+version      = "0.2.0"
 description  = "Pure Bambu Lab protocol types, payload codec, state merge and HMS table."
 edition      = { workspace = true }
 rust-version = { workspace = true }
