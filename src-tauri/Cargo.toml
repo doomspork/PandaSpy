@@ -1,6 +1,6 @@
 [package]
 name         = "pandaspy"
-version      = "0.1.0"
+version      = "0.2.0"
 description  = "Monitor Bambu Lab 3D printers from the menu bar."
 edition      = { workspace = true }
 rust-version = { workspace = true }
