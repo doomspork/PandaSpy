@@ -579,6 +579,14 @@ mod tests {
     }
 
     #[test]
+    fn the_a2l_reports_the_same_placeholder_and_is_hidden_too() {
+        // A real A2L mid-print sends `chamber_temper: 5` and no `device.ctc`.
+        let state = fixture_state(include_str!("../../../fixtures/reports/a2l-printing.json"));
+        assert_eq!(state.chamber_temper, Some(5.0));
+        assert_eq!(state.chamber_temp(Some(&PrinterModel::A2L)), None);
+    }
+
+    #[test]
     fn no_open_frame_model_shows_a_chamber() {
         let state: PrinterState = serde_json::from_str(
             r#"{"chamber_temper": 5, "device": {"ctc": {"info": {"temp": 30}}}}"#,

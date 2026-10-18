@@ -117,9 +117,9 @@ impl From<String> for PrinterModel {
         // `product_name`. The A-series codes and names match the `model_id`
         // and `name` of Bambu Studio's machine profiles
         // (`resources/profiles/BBL/machine/Bambu Lab A2L.json` etc.);
-        // `fixtures/reports/a1-get-version.json` confirms the A1's name is
-        // what the printer itself reports. The P1P name follows the same
-        // pattern but is unconfirmed.
+        // `fixtures/reports/a1-get-version.json` and `a2l-get-version.json`
+        // confirm the printers themselves report these names. The A1 mini and
+        // P1P names follow the same pattern but are unconfirmed.
         // Matching is exact on purpose: a fuzzy match that guesses wrong is
         // worse than an honest Unknown.
         match raw.as_str() {
@@ -191,6 +191,25 @@ mod tests {
             );
             assert_eq!(model.product_code(), code);
             assert_eq!(model.has_chamber(), Some(false), "{model}");
+        }
+    }
+
+    #[test]
+    fn real_get_version_replies_resolve_to_their_model() {
+        let captures: [(&[u8], PrinterModel); 2] = [
+            (
+                include_bytes!("../../../fixtures/reports/a1-get-version.json"),
+                PrinterModel::A1,
+            ),
+            (
+                include_bytes!("../../../fixtures/reports/a2l-get-version.json"),
+                PrinterModel::A2L,
+            ),
+        ];
+        for (payload, model) in captures {
+            let info = crate::Report::parse(payload).unwrap().info().unwrap();
+            let name = info.product_name().unwrap().to_owned();
+            assert_eq!(PrinterModel::from(name), model);
         }
     }
 
