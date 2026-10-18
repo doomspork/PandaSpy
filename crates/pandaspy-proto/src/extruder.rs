@@ -1,5 +1,6 @@
-//! The extruder block dual-nozzle printers (H2D, X2D) report under
-//! `device.extruder`.
+//! The `device` block newer firmware (H2D, X2D) reports: chiefly the
+//! extruder block under `device.extruder`, plus the chamber sensor under
+//! `device.ctc`.
 //!
 //! On these machines `ams.tray_now` is **not** a global tray index: it carries
 //! only the slot number within whichever unit is feeding, so the `global / 4`
@@ -24,6 +25,40 @@ pub const SLOT_NONE: i64 = 0xFFFF;
 #[serde(default)]
 pub struct Device {
     pub extruder: Option<ExtruderSystem>,
+    /// The chamber temperature controller. The X2D reports its chamber here
+    /// and omits the flat `chamber_temper` entirely.
+    pub ctc: Option<Component>,
+}
+
+impl Device {
+    /// The chamber's current temperature, from `ctc`.
+    #[must_use]
+    pub fn chamber_temp(&self) -> Option<f64> {
+        let packed = self.ctc.as_ref()?.info.as_ref()?.temp?;
+        Some(f64::from(unpack_temp(packed)))
+    }
+}
+
+/// A single-sensor `device.<component>` entry, such as `ctc` or `bed`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Component {
+    pub info: Option<ComponentInfo>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ComponentInfo {
+    /// Packed as `target << 16 | current`, in whole degrees.
+    #[serde(deserialize_with = "de::opt_i64")]
+    pub temp: Option<i64>,
+}
+
+/// The current reading from a packed `device.*.info.temp`. Pinned by the X2D
+/// capture, where `device.bed.info.temp` is `4587590` (`0x0046_0046`) while
+/// the flat `bed_temper` and `bed_target_temper` both say 70.
+pub(crate) fn unpack_temp(packed: i64) -> u16 {
+    (packed & 0xFFFF) as u16
 }
 
 /// `device.extruder`: per-extruder state plus a packed printer-wide word.

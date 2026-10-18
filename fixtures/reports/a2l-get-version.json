@@ -1,0 +1,80 @@
+{
+  "info": {
+    "command": "get_version",
+    "sequence_id": "2",
+    "module": [
+      {
+        "name": "ota",
+        "sw_ver": "01.01.05.00",
+        "hw_ver": "OTA",
+        "loader_ver": "00.00.00.00",
+        "sn": "00M09A000000000",
+        "product_name": "Bambu Lab A2L",
+        "visible": true,
+        "flag": 3
+      },
+      {
+        "name": "ap",
+        "sw_ver": "01.13.51.03",
+        "hw_ver": "AP03",
+        "loader_ver": "00.00.00.00",
+        "sn": "00M09A000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      },
+      {
+        "name": "mc",
+        "sw_ver": "01.01.90.66",
+        "hw_ver": "MC04",
+        "loader_ver": "00.01.02.37",
+        "sn": "000000000000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      },
+      {
+        "name": "th",
+        "sw_ver": "01.01.27.05",
+        "hw_ver": "TH03",
+        "loader_ver": "00.00.10.13",
+        "sn": "000000000000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      },
+      {
+        "name": "n3s/128",
+        "sw_ver": "04.00.21.88",
+        "hw_ver": "N3S05",
+        "loader_ver": "00.00.00.00",
+        "sn": "000000000000000",
+        "product_name": "AMS HT (1)",
+        "visible": true,
+        "flag": 0
+      },
+      {
+        "name": "ams_f1/16",
+        "sw_ver": "00.00.08.22",
+        "hw_ver": "AMS_F102",
+        "loader_ver": "00.00.00.00",
+        "sn": "000000000000000",
+        "product_name": "AMS lite",
+        "visible": true,
+        "flag": 0
+      },
+      {
+        "name": "smc",
+        "sw_ver": "01.01.19.00",
+        "hw_ver": "SMC03",
+        "loader_ver": "00.00.06.03",
+        "sn": "000000000000000000",
+        "product_name": "",
+        "visible": false,
+        "flag": 0
+      }
+    ],
+    "result": "success",
+    "reason": ""
+  }
+}

@@ -47,7 +47,7 @@ pub mod wire;
 
 pub use ams::{ActiveTray, AmsSystem, AmsUnit, AmsUnitType, Tray};
 pub use error::ProtoError;
-pub use extruder::{Device, Extruder, ExtruderSystem};
+pub use extruder::{Component, ComponentInfo, Device, Extruder, ExtruderSystem};
 pub use hms::{HmsEntry, HmsModule, HmsSeverity};
 pub use job::{GcodeState, PrintStage, PrinterStatus};
 pub use model::{DeviceSerial, PrinterModel};

@@ -49,6 +49,7 @@ pub enum PrinterModel {
     P1S,
     A1,
     A1Mini,
+    A2L,
     H2D,
     /// Value reported by the printer that this build does not know about.
     /// Preserved verbatim.
@@ -67,6 +68,7 @@ impl PrinterModel {
             Self::P1S => "C12",
             Self::A1 => "N2S",
             Self::A1Mini => "N1",
+            Self::A2L => "N9",
             Self::H2D => "O1D",
             Self::Unknown(raw) => raw,
         }
@@ -83,6 +85,7 @@ impl PrinterModel {
             Self::P1S => "P1S",
             Self::A1 => "A1",
             Self::A1Mini => "A1 mini",
+            Self::A2L => "A2L",
             Self::H2D => "H2D",
             Self::Unknown(raw) => raw,
         }
@@ -102,7 +105,7 @@ impl PrinterModel {
     pub fn has_chamber(&self) -> Option<bool> {
         match self {
             Self::X1 | Self::X1Carbon | Self::X1E | Self::P1S | Self::H2D => Some(true),
-            Self::P1P | Self::A1 | Self::A1Mini => Some(false),
+            Self::P1P | Self::A1 | Self::A1Mini | Self::A2L => Some(false),
             Self::Unknown(_) => None,
         }
     }
@@ -110,17 +113,24 @@ impl PrinterModel {
 
 impl From<String> for PrinterModel {
     fn from(raw: String) -> Self {
-        // Product codes first, then the SSDP `DevModel` strings. Matching is
-        // exact on purpose: a fuzzy match that guesses wrong is worse than an
-        // honest Unknown.
+        // Product codes, then the SSDP `DevModel` strings, then `get_version`'s
+        // `product_name`. The A-series codes and names match the `model_id`
+        // and `name` of Bambu Studio's machine profiles
+        // (`resources/profiles/BBL/machine/Bambu Lab A2L.json` etc.);
+        // `fixtures/reports/a1-get-version.json` and `a2l-get-version.json`
+        // confirm the printers themselves report these names. The A1 mini and
+        // P1P names follow the same pattern but are unconfirmed.
+        // Matching is exact on purpose: a fuzzy match that guesses wrong is
+        // worse than an honest Unknown.
         match raw.as_str() {
             "BL-P002" | "3DPrinter-X1" => Self::X1,
             "BL-P001" | "3DPrinter-X1-Carbon" => Self::X1Carbon,
             "C13" => Self::X1E,
-            "C11" => Self::P1P,
+            "C11" | "Bambu Lab P1P" => Self::P1P,
             "C12" => Self::P1S,
-            "N2S" => Self::A1,
-            "N1" => Self::A1Mini,
+            "N2S" | "Bambu Lab A1" => Self::A1,
+            "N1" | "Bambu Lab A1 mini" => Self::A1Mini,
+            "N9" | "Bambu Lab A2L" => Self::A2L,
             "O1D" => Self::H2D,
             _ => Self::Unknown(raw),
         }
@@ -156,6 +166,51 @@ mod tests {
         assert_eq!(PrinterModel::from("C12".to_owned()), PrinterModel::P1S);
         assert_eq!(PrinterModel::from("N1".to_owned()), PrinterModel::A1Mini);
         assert_eq!(PrinterModel::from("O1D".to_owned()), PrinterModel::H2D);
+        assert_eq!(
+            PrinterModel::from("Bambu Lab A1".to_owned()),
+            PrinterModel::A1
+        );
+    }
+
+    #[test]
+    fn open_frame_models_resolve_from_every_identifier_and_have_no_chamber() {
+        // Each of these reports a placeholder `chamber_temper` (or may), so
+        // recognising them from both the product code (SSDP, Studio) and the
+        // `get_version` product name is what keeps a fake reading off the card.
+        let open = [
+            (PrinterModel::A1, "N2S", "Bambu Lab A1"),
+            (PrinterModel::A1Mini, "N1", "Bambu Lab A1 mini"),
+            (PrinterModel::A2L, "N9", "Bambu Lab A2L"),
+        ];
+        for (model, code, product_name) in open {
+            assert_eq!(PrinterModel::from(code.to_owned()), model, "{code}");
+            assert_eq!(
+                PrinterModel::from(product_name.to_owned()),
+                model,
+                "{product_name}"
+            );
+            assert_eq!(model.product_code(), code);
+            assert_eq!(model.has_chamber(), Some(false), "{model}");
+        }
+    }
+
+    #[test]
+    fn real_get_version_replies_resolve_to_their_model() {
+        let captures: [(&[u8], PrinterModel); 2] = [
+            (
+                include_bytes!("../../../fixtures/reports/a1-get-version.json"),
+                PrinterModel::A1,
+            ),
+            (
+                include_bytes!("../../../fixtures/reports/a2l-get-version.json"),
+                PrinterModel::A2L,
+            ),
+        ];
+        for (payload, model) in captures {
+            let info = crate::Report::parse(payload).unwrap().info().unwrap();
+            let name = info.product_name().unwrap().to_owned();
+            assert_eq!(PrinterModel::from(name), model);
+        }
     }
 
     #[test]

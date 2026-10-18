@@ -17,7 +17,7 @@ use pandaspy_client::{
     PrinterEndpoint, SessionConfig, SessionEvent, SessionSpec, TlsTransport, supervise,
 };
 use pandaspy_discovery::{DiscoveryOptions, ProbePolicy, discover, net};
-use pandaspy_proto::{DeviceSerial, PrinterState};
+use pandaspy_proto::{DeviceSerial, PrinterModel, PrinterState};
 use pandaspy_store::{
     CertPinStore, Config, ConfigStore, EncryptedFileSecrets, FileConfigStore, KeyringSecrets,
     PrinterEntry, SecretBackend, SecretStore, keyring_available,
@@ -64,8 +64,10 @@ pub struct AppState {
 struct PrinterHandle {
     connection: ConnectionView,
     state: Option<PrinterState>,
-    /// From the session's `get_version` reply; asked for on every connect.
-    model: Option<String>,
+    /// `get_version`'s product name (`Bambu Lab A1`); asked for on every
+    /// connect. The UI's model label and the recognised [`PrinterModel`] both
+    /// derive from it.
+    product_name: Option<String>,
     shutdown: watch::Sender<bool>,
     /// Which supervisor generation owns this entry. A forwarder only mutates the
     /// handle when its captured generation still matches, so a stopped-then-
@@ -223,25 +225,26 @@ impl AppState {
                         .map(|h| h.connection.clone())
                         .unwrap_or(ConnectionView::DISCONNECTED);
                     let state = handle.and_then(|h| h.state.clone());
-                    let model = handle.and_then(|h| h.model.clone());
-                    (entry.clone(), connection, state, model)
+                    let product_name = handle.and_then(|h| h.product_name.clone());
+                    (entry.clone(), connection, state, product_name)
                 })
                 .collect()
         };
 
         raw.into_iter()
-            .filter_map(|(entry, connection, state, model)| {
+            .filter_map(|(entry, connection, state, product_name)| {
                 let serial = entry.serial.as_ref()?.0.clone();
+                let kind = product_name.clone().map(PrinterModel::from);
                 Some(PrinterView {
                     serial,
                     nickname: entry.nickname.clone(),
                     device_name: entry.device_name.clone(),
-                    model,
+                    model: product_name.as_deref().map(model_label),
                     address: entry.last_address.clone(),
                     connection,
                     state: state
                         .as_ref()
-                        .map(|s| PrinterSnapshot::from_state(s, &lang)),
+                        .map(|s| PrinterSnapshot::from_state(s, kind.as_ref(), &lang)),
                 })
             })
             .collect()
@@ -404,7 +407,7 @@ impl AppState {
                 PrinterHandle {
                     connection: ConnectionView::DISCONNECTED,
                     state: None,
-                    model: None,
+                    product_name: None,
                     shutdown,
                     generation,
                 },
@@ -461,7 +464,7 @@ impl AppState {
             PrinterHandle {
                 connection: ConnectionView::DISCONNECTED,
                 state: None,
-                model: None,
+                product_name: None,
                 shutdown: shutdown_tx,
                 generation,
             },
@@ -568,7 +571,7 @@ fn forward_event(app: &AppHandle, serial: &str, generation: u64, event: SessionE
             let mut printers = state.printers.lock().unwrap();
             match printers.get_mut(serial) {
                 Some(handle) if handle.generation == generation => {
-                    handle.model = info.product_name().map(model_label);
+                    handle.product_name = info.product_name().map(str::to_owned);
                 }
                 _ => return,
             }

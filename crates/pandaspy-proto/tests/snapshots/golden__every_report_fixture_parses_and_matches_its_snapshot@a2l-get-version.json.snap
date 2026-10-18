@@ -1,0 +1,74 @@
+---
+source: crates/pandaspy-proto/tests/golden.rs
+expression: info
+input_file: fixtures/reports/a2l-get-version.json
+---
+{
+  "command": "get_version",
+  "sequence_id": "2",
+  "module": [
+    {
+      "name": "ota",
+      "sw_ver": "01.01.05.00",
+      "hw_ver": "OTA",
+      "sn": "00M09A000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "Bambu Lab A2L",
+      "flag": 3
+    },
+    {
+      "name": "ap",
+      "sw_ver": "01.13.51.03",
+      "hw_ver": "AP03",
+      "sn": "00M09A000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "",
+      "flag": 0
+    },
+    {
+      "name": "mc",
+      "sw_ver": "01.01.90.66",
+      "hw_ver": "MC04",
+      "sn": "000000000000000000",
+      "loader_ver": "00.01.02.37",
+      "product_name": "",
+      "flag": 0
+    },
+    {
+      "name": "th",
+      "sw_ver": "01.01.27.05",
+      "hw_ver": "TH03",
+      "sn": "000000000000000000",
+      "loader_ver": "00.00.10.13",
+      "product_name": "",
+      "flag": 0
+    },
+    {
+      "name": "n3s/128",
+      "sw_ver": "04.00.21.88",
+      "hw_ver": "N3S05",
+      "sn": "000000000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "AMS HT (1)",
+      "flag": 0
+    },
+    {
+      "name": "ams_f1/16",
+      "sw_ver": "00.00.08.22",
+      "hw_ver": "AMS_F102",
+      "sn": "000000000000000",
+      "loader_ver": "00.00.00.00",
+      "product_name": "AMS lite",
+      "flag": 0
+    },
+    {
+      "name": "smc",
+      "sw_ver": "01.01.19.00",
+      "hw_ver": "SMC03",
+      "sn": "000000000000000000",
+      "loader_ver": "00.00.06.03",
+      "product_name": "",
+      "flag": 0
+    }
+  ]
+}

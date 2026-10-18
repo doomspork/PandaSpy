@@ -696,9 +696,10 @@ Everything below is deliberate scaffolding debt, not oversight.
   none of rustls, ring, tokio or the Tauri tree. `ci.yml` passes
   `--workspace`; the local command in this file does too. A green audit that
   looked at 4% of the tree is the failure mode to fear here.
-- **16 `unmaintained` advisories are ignored in `deny.toml`, all via Tauri**
-  (the GTK3 binding family + `proc-macro-error` on Linux, and the retired
-  `rust-unic` crates via `tauri-utils`→`urlpattern`). Every one is a
+- **9 `unmaintained` advisories are ignored in `deny.toml`, all via Tauri**
+  (`proc-macro-error` in the Linux GTK3 tree, the retired `rust-unic` crates
+  via `tauri-utils`→`urlpattern`, and zbus 5's `zvariant`/`zbus_names` via
+  the notification and single-instance plugins). Every one is a
   no-fix-available notice, not a vulnerability. Re-audit the whole `ignore`
   list on any Tauri version bump — an ignore that outlives its cause is a
   silenced alarm, and cargo-deny flags a stale entry as
