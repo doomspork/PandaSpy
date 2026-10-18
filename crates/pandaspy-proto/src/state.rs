@@ -579,6 +579,17 @@ mod tests {
     }
 
     #[test]
+    fn no_open_frame_model_shows_a_chamber() {
+        let state: PrinterState = serde_json::from_str(
+            r#"{"chamber_temper": 5, "device": {"ctc": {"info": {"temp": 30}}}}"#,
+        )
+        .unwrap();
+        for model in [PrinterModel::A1, PrinterModel::A1Mini, PrinterModel::A2L] {
+            assert_eq!(state.chamber_temp(Some(&model)), None, "{model}");
+        }
+    }
+
+    #[test]
     fn packed_temperatures_keep_the_low_half() {
         assert_eq!(crate::extruder::unpack_temp(0x0046_0046), 70);
         assert_eq!(crate::extruder::unpack_temp(36), 36);
